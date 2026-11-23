@@ -190,9 +190,19 @@ Cada fase termina en algo **jugable** y en una **puerta de decisión**. Estimaci
 
 ### Fase 6 — Prueba de diversión · ~1–2 jornadas + continuo
 **Puerta principal del MVP.** Primeras partidas completas contra la IA, en ambos roles.
-- [ ] Jugar 10+ partidas por rol y rellenar el cuestionario (sección 5).
-- [ ] Revisar el CSV y ajustar valores con el panel de depuración.
-- [ ] Si no es divertido: revisar visión, tamaño del mapa, ritmo y velocidades **antes** de añadir nada.
+
+Herramientas listas:
+- [x] Cuestionario al final de cada partida: diversión 1–5, ¿tensión?, ¿decisiones / suerte / injusto?, nota libre. Todo va a `playtests.csv`.
+- [x] Pantalla **Resultados de las pruebas** (menú) con las señales de la sección 5 y semáforo sano/revisar.
+- [x] Dificultad de la IA rival en el menú (Fácil / Normal / Difícil), registrada en el CSV.
+- [x] Los CSV de versiones anteriores se migran sin perder partidas (con copia de seguridad).
+
+Protocolo (lo hace el jugador):
+- [ ] Sesión 1: 5 partidas como Hunter y 5 como Ghost en **Normal**, respondiendo siempre al cuestionario.
+- [ ] Revisar *Resultados de las pruebas*. Si un bando gana casi siempre, repetir 3+3 partidas en Fácil o Difícil para separar "la IA es mala/buena" de "el diseño está desequilibrado".
+- [ ] Ajustar con F1 una sola cosa por sesión (p. ej. `net_immobilize_time`, `net_range`, `vision_radius_lit`), apuntarlo en la nota y repetir.
+- [ ] Si no es divertido: revisar visión, tamaño del mapa (5 habitaciones), ritmo y velocidades **antes** de añadir nada.
+- [ ] Decisión: ¿pasa la puerta? (Quiere jugar otra ≥ 60 %, diversión ≥ 3,5, victorias 40–60 % por bando.)
 
 ### Fase 7 — Móvil · ~3 jornadas
 *(Hito 6 del GDD)*

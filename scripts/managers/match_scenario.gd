@@ -273,9 +273,12 @@ func _log_match(play_again: bool) -> void:
 		"ghosts_capturados": ghosts - _count_free_ghosts() if is_inside_tree() else "",
 		"diversion_1a5": _rating if _rating > 0 else "",
 		"jugar_otra": "si" if play_again else "no",
+		"dificultad": GameManager.get_difficulty_name(),
 	}
+	if is_instance_valid(_result_screen):
+		row.merge(_result_screen.get_answers(), true)
 	for key in _stats:
 		row[key] = ("%.1f" % _stats[key]) if _stats[key] is float else _stats[key]
 	var err := PlaytestLogger.append(row)
 	if err != OK:
-		push_warning("No se pudo guardar la partida en %s (%s)" % [PlaytestLogger.PATH, error_string(err)])
+		push_warning("No se pudo guardar la partida en %s (%s)" % [PlaytestLogger.path, error_string(err)])

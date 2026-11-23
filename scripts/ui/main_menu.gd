@@ -31,7 +31,7 @@ func _ready() -> void:
 	var cfg := GameManager.config
 	box.add_child(_button("Jugar como HUNTER  (vs %d Ghosts)" % cfg.ghost_count, func() -> void: GameManager.start_match(DummySpawn.Role.HUNTER), Color(1.0, 0.6, 0.25)))
 	box.add_child(_button("Jugar como GHOST  (vs 1 Hunter)", func() -> void: GameManager.start_match(DummySpawn.Role.GHOST), Color(0.45, 0.85, 1.0)))
-	box.add_child(_label("Los rivales los controla la IA.", 13, Color(0.6, 0.6, 0.7)))
+	box.add_child(_difficulty_row())
 	box.add_child(_spacer(12))
 
 	box.add_child(_label("Escenarios de prueba (también con 1 / 2 / 3 / 4)", 16, Color(0.8, 0.8, 0.85)))
@@ -40,8 +40,29 @@ func _ready() -> void:
 		box.add_child(_button(entry[0], func() -> void: get_tree().change_scene_to_file(path)))
 	box.add_child(_spacer(12))
 
-	box.add_child(_button("Abrir carpeta de datos (playtests.csv)", func() -> void: OS.shell_open(PlaytestLogger.get_folder())))
+	box.add_child(_button("Resultados de las pruebas", func() -> void: get_tree().change_scene_to_file("res://scenes/main/PlaytestSummary.tscn"), Color(0.7, 1.0, 0.7)))
 	box.add_child(_button("Salir", func() -> void: get_tree().quit()))
+
+
+## Dificultad de la IA rival: Fácil / Normal / Difícil.
+func _difficulty_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var label := Label.new()
+	label.text = "IA rival:"
+	label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8))
+	row.add_child(label)
+	var group := ButtonGroup.new()
+	for level in [GameManager.Difficulty.EASY, GameManager.Difficulty.NORMAL, GameManager.Difficulty.HARD]:
+		var button := Button.new()
+		button.text = ["Fácil", "Normal", "Difícil"][level]
+		button.toggle_mode = true
+		button.button_group = group
+		button.button_pressed = level == GameManager.difficulty
+		button.custom_minimum_size = Vector2(96, 34)
+		button.pressed.connect(GameManager.set_difficulty.bind(level))
+		row.add_child(button)
+	return row
 
 
 func _button(text: String, callback: Callable, color: Color = Color.WHITE) -> Button:
