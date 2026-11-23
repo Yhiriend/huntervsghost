@@ -16,6 +16,8 @@ enum Behavior { STATIC, ROUTE }
 @export var route_sneak: bool = false
 ## Solo Hunter: dispara la red a cualquier Ghost que vea a tiro (tras dummy_reaction_time).
 @export var shoots_on_sight: bool = false
+## Solo Hunter: si hay un Ghost atrapado en una red a la vista, va hacia él y lo captura.
+@export var captures_netted: bool = false
 ## Solo Ghost: nombre del armario (HidingSpot) en el que empieza escondido.
 @export var start_hidden_in: String = ""
 ## El jugador empieza controlando este personaje.

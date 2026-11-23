@@ -18,6 +18,8 @@ const OWN_NOISE_COLOR := Color(1, 1, 1, 0.25)
 @export var rooms_dark: PackedStringArray = []
 ## Puertas (nombre del nodo Door) que empiezan cerradas.
 @export var doors_closed: PackedStringArray = []
+## Permite cambiar de personaje con Tab.
+@export var allow_switch: bool = true
 
 
 class Entry:
@@ -74,7 +76,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("reset_scenario"):
 		reset_scenario()
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("switch_character"):
+	elif allow_switch and event.is_action_pressed("switch_character"):
 		_take_control((_controlled + 1) % _entries.size())
 		get_viewport().set_input_as_handled()
 

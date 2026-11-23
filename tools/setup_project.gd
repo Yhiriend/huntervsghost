@@ -9,7 +9,7 @@ func _init() -> void:
 	_setup_input_map()
 	ProjectSettings.set_setting("autoload/GameManager", "*res://scripts/autoload/game_manager.gd")
 	ProjectSettings.set_setting("autoload/DebugOverlay", "*res://scripts/ui/debug_overlay.gd")
-	ProjectSettings.set_setting("application/run/main_scene", "res://scenes/test/Prototype01.tscn")
+	ProjectSettings.set_setting("application/run/main_scene", "res://scenes/main/MainMenu.tscn")
 	ProjectSettings.set_setting("application/config/name", "Ghost-Hunter")
 	ProjectSettings.set_setting("layer_names/3d_physics/layer_1", "world")
 	ProjectSettings.set_setting("layer_names/3d_physics/layer_2", "characters")
@@ -42,6 +42,7 @@ func _setup_input_map() -> void:
 	_action("scene_1", [_key(KEY_1)])
 	_action("scene_2", [_key(KEY_2)])
 	_action("scene_3", [_key(KEY_3)])
+	_action("back_to_menu", [_key(KEY_ESCAPE), _joy(JOY_BUTTON_START)])
 
 
 func _action(action_name: String, events: Array) -> void:

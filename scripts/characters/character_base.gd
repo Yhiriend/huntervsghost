@@ -11,6 +11,8 @@ const DUMMY_LABEL_COLOR := Color(0.75, 0.75, 0.8)
 var controller: CharacterController
 var intent := CharacterIntent.new()
 var is_player_controlled: bool = false
+## Congelado: ignora a su controlador (preparación de la partida, partida terminada).
+var frozen: bool = false
 var vision: VisionSensor
 ## Objeto que se está usando manteniendo E (p. ej. registrar un armario).
 var interact_target: Interactable = null
@@ -157,6 +159,8 @@ func _physics_process(delta: float) -> void:
 	intent.reset()
 	if controller:
 		controller.update_intent(self, intent)
+	if frozen:
+		intent.reset()
 	if not is_active():
 		return
 	_process_actions(delta)

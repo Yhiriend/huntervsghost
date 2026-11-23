@@ -6,6 +6,9 @@ extends CanvasLayer
 const MESSAGE_FADE_TIME := 0.5
 
 var _controlled: CharacterBase
+var _timer_label: Label
+var _blackout: ColorRect
+var _blackout_label: Label
 var _ghosts_label: Label
 var _status_label: Label
 var _prompt_label: Label
@@ -21,6 +24,18 @@ func _ready() -> void:
 
 func set_controlled(character: CharacterBase) -> void:
 	_controlled = character
+
+
+## Temporizador de la partida ("" lo oculta).
+func set_timer_text(text: String, urgent: bool = false) -> void:
+	_timer_label.text = text
+	_timer_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3) if urgent else Color.WHITE)
+
+
+## Pantalla negra (preparación del Hunter: no puede ver dónde se esconden los Ghosts).
+func set_blackout(enabled: bool, text: String = "") -> void:
+	_blackout.visible = enabled
+	_blackout_label.text = text
 
 
 func show_message(text: String, duration: float = 2.0) -> void:
@@ -49,6 +64,8 @@ func _update_status() -> void:
 	_capture_bar.visible = false
 	_status_label.text = ""
 	if _controlled == null:
+		return
+	if _controlled.frozen:
 		return
 
 	if _controlled is Hunter:
@@ -103,6 +120,17 @@ func _build_ui() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
+	_blackout = ColorRect.new()
+	_blackout.color = Color(0.01, 0.01, 0.03, 0.97)
+	_blackout.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_blackout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_blackout.visible = false
+	root.add_child(_blackout)
+	_blackout_label = _make_label(40)
+	_blackout_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_blackout_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_blackout.add_child(_blackout_label)
+
 	var top := VBoxContainer.new()
 	top.anchor_left = 0.5
 	top.anchor_right = 0.5
@@ -111,6 +139,8 @@ func _build_ui() -> void:
 	top.offset_top = 10.0
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(top)
+	_timer_label = _make_label(34)
+	top.add_child(_timer_label)
 	_ghosts_label = _make_label(24)
 	top.add_child(_ghosts_label)
 	_status_label = _make_label(18)

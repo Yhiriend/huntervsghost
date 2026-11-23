@@ -3,9 +3,10 @@ extends CanvasLayer
 ##   F1 -> mostrar/ocultar el panel de ajustes.
 ##   F2 -> mostrar/ocultar los conos de visión (activos por defecto).
 ##   1/2/3 -> cambiar de escenario (Prototype01 / TestHunter / TestGhost).
+##   Esc -> volver al menú principal.
 ## El panel se genera solo a partir de las variables @export_range de GameConfig.
 
-const HELP_TEXT := "WASD mover · Ratón apuntar · Clic red · E usar (mantener: capturar/registrar) · Shift sigilo · Tab cambiar · R reiniciar · F1 ajustes · F2 conos · 1/2/3 escenario"
+const HELP_TEXT := "WASD mover · Ratón apuntar · Clic red · E usar (mantener: capturar/registrar) · Shift sigilo · Tab cambiar · R reiniciar · F1 ajustes · F2 conos · 1/2/3 escenario · Esc menú"
 ## Escenarios accesibles con las teclas 1, 2 y 3.
 const SCENES := {
 	"scene_1": "res://scenes/test/Prototype01.tscn",
@@ -16,6 +17,7 @@ const REFRESH_INTERVAL := 0.25
 
 var _panel: PanelContainer
 var _fps_label: Label
+var _help_label: Label
 var _status_label: Label
 ## nombre de propiedad -> { "slider": HSlider, "label": Label }
 var _rows: Dictionary = {}
@@ -41,6 +43,12 @@ func _input(event: InputEvent) -> void:
 				get_tree().change_scene_to_file(SCENES[action])
 				get_viewport().set_input_as_handled()
 				return
+	if event.is_action_pressed("back_to_menu"):
+		var current := get_tree().current_scene
+		if current and current.scene_file_path != GameManager.MENU_SCENE:
+			GameManager.go_to_menu()
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("debug_vision"):
 		GameManager.debug_vision = not GameManager.debug_vision
 		_set_status("Conos de visión: %s" % ("ON" if GameManager.debug_vision else "OFF"))
@@ -49,6 +57,8 @@ func _input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
+	var current := get_tree().current_scene
+	_help_label.visible = current != null and current.scene_file_path != GameManager.MENU_SCENE
 	if _status_time_left > 0.0:
 		_status_time_left -= delta
 		if _status_time_left <= 0.0:
@@ -80,6 +90,7 @@ func _build_ui() -> void:
 	root.add_child(_fps_label)
 
 	var help := Label.new()
+	_help_label = help
 	help.text = HELP_TEXT
 	help.anchor_top = 1.0
 	help.anchor_bottom = 1.0

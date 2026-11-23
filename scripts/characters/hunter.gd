@@ -3,6 +3,8 @@ extends CharacterBase
 ## Cazador: dispara redes que inmovilizan a los Ghosts y los captura manteniendo "interactuar".
 ## Jugando con ratón, mira siempre hacia el punto de apuntado.
 
+signal net_fired(hunter: Hunter)
+
 const DEBUG_COLOR := Color(1.0, 0.4, 0.05, 0.25)
 const AIM_IN_RANGE := Color(1, 1, 1, 0.9)
 const AIM_OUT_OF_RANGE := Color(0.6, 0.6, 0.6, 0.5)
@@ -113,6 +115,7 @@ func fire_net() -> void:
 	get_parent().add_child(net)
 	net.launch(self, dir)
 	net_cooldown_left = GameManager.config.net_cooldown
+	net_fired.emit(self)
 
 
 func _update_capture(delta: float) -> void:

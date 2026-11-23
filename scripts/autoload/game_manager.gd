@@ -6,8 +6,13 @@ signal debug_vision_toggled(enabled: bool)
 signal noise_made(position: Vector3, radius: float, source: Node)
 
 const CONFIG_PATH := "res://resources/game_config.tres"
+const MENU_SCENE := "res://scenes/main/MainMenu.tscn"
+const MATCH_SCENE := "res://scenes/game/Match.tscn"
 
 var config: GameConfig = _load_config()
+
+## Bando del jugador en la próxima partida (DummySpawn.Role: 0 = Hunter, 1 = Ghost).
+var selected_role: int = 0
 
 ## Dibuja los conos de visión de todos los personajes (F2). Activo por defecto.
 var debug_vision: bool = true:
@@ -23,6 +28,15 @@ func _load_config() -> GameConfig:
 			return loaded
 	push_warning("No se encontró %s; usando valores por defecto." % CONFIG_PATH)
 	return GameConfig.new()
+
+
+func start_match(role: int) -> void:
+	selected_role = role
+	get_tree().change_scene_to_file(MATCH_SCENE)
+
+
+func go_to_menu() -> void:
+	get_tree().change_scene_to_file(MENU_SCENE)
 
 
 ## Restaura todos los valores a los definidos en game_config.gd.

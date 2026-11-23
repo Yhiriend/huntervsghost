@@ -67,6 +67,8 @@ extends Resource
 @export_group("Partida")
 @export_range(30.0, 600.0, 10.0) var match_duration: float = 180.0
 @export_range(0.0, 20.0, 1.0) var prep_time: float = 8.0
+## Ghosts en una partida jugando como Hunter (jugando como Ghost siempre es 1 vs 1).
+@export_range(1, 5, 1) var ghost_count: int = 2
 
 @export_group("Cámara")
 @export_range(30.0, 89.0, 1.0) var camera_pitch: float = 65.0

@@ -172,12 +172,12 @@ Cada fase termina en algo **jugable** y en una **puerta de decisión**. Estimaci
 
 ### Fase 4 — Ciclo de partida · ~1,5 jornadas
 *(Hito 5 del GDD)*
-- [ ] Menú mínimo: jugar como Hunter / jugar como Ghost / escenarios de prueba.
-- [ ] Temporizador, preparación de 8 s (Hunter bloqueado y con la vista tapada).
-- [ ] Victoria/derrota según el GDD, con prioridad a la captura en el último instante.
-- [ ] Pantalla de resultados y botón "Jugar otra vez".
-- [ ] **Registro de partidas** en `user://playtests.csv`: duración, ganador, capturas, tiempo escondido, redes disparadas/acertadas.
-- [ ] Se prueba con maniquíes (como Hunter, capturar a los 2 Ghosts maniquí; como Ghost, sobrevivir al Hunter en ruta) para validar el flujo completo antes de la IA.
+- [x] Menú mínimo: jugar como Hunter / jugar como Ghost / escenarios de prueba / abrir carpeta de datos.
+- [x] Temporizador, preparación de 8 s (Hunter bloqueado y con la vista tapada).
+- [x] Victoria/derrota según el GDD, con prioridad a la captura en el último instante.
+- [x] Pantalla de resultados con estadísticas, valoración de diversión (1–5) y botón "Jugar otra vez".
+- [x] **Registro de partidas** en `user://playtests.csv`: duración, ganador, capturas, tiempo escondido, redes disparadas/acertadas, puertas, luces, diversión y si se quiso jugar otra.
+- [x] Se prueba con maniquíes (como Hunter, 2 Ghosts quietos en sitios aleatorios, a veces en armarios; como Ghost, un Hunter que patrulla, dispara y captura) para validar el flujo completo antes de la IA.
 
 ### Fase 5 — Inteligencia artificial · ~5 jornadas
 *(Hito 4 del GDD)*
