@@ -5,6 +5,7 @@ const TEST_SCENES := [
 	["Prototype01 · casa libre", "res://scenes/test/Prototype01.tscn"],
 	["TestHunter · 5 Ghosts maniquí", "res://scenes/test/TestHunter.tscn"],
 	["TestGhost · Hunters que patrullan", "res://scenes/test/TestGhost.tscn"],
+	["TestAI · IA contra IA (espectador)", "res://scenes/test/TestAI.tscn"],
 ]
 
 
@@ -30,10 +31,10 @@ func _ready() -> void:
 	var cfg := GameManager.config
 	box.add_child(_button("Jugar como HUNTER  (vs %d Ghosts)" % cfg.ghost_count, func() -> void: GameManager.start_match(DummySpawn.Role.HUNTER), Color(1.0, 0.6, 0.25)))
 	box.add_child(_button("Jugar como GHOST  (vs 1 Hunter)", func() -> void: GameManager.start_match(DummySpawn.Role.GHOST), Color(0.45, 0.85, 1.0)))
-	box.add_child(_label("Los rivales son maniquíes hasta que esté la IA (Fase 5).", 13, Color(0.6, 0.6, 0.7)))
+	box.add_child(_label("Los rivales los controla la IA.", 13, Color(0.6, 0.6, 0.7)))
 	box.add_child(_spacer(12))
 
-	box.add_child(_label("Escenarios de prueba (también con 1 / 2 / 3)", 16, Color(0.8, 0.8, 0.85)))
+	box.add_child(_label("Escenarios de prueba (también con 1 / 2 / 3 / 4)", 16, Color(0.8, 0.8, 0.85)))
 	for entry in TEST_SCENES:
 		var path: String = entry[1]
 		box.add_child(_button(entry[0], func() -> void: get_tree().change_scene_to_file(path)))

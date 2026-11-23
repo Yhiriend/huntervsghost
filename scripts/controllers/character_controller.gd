@@ -6,3 +6,13 @@ extends Node
 
 func update_intent(_character: CharacterBase, _intent: CharacterIntent) -> void:
 	pass
+
+
+## Vuelve al estado inicial (al reiniciar el escenario).
+func reset() -> void:
+	pass
+
+
+## Texto bajo el nombre del personaje ("DUMMY", "IA"...).
+func get_tag() -> String:
+	return ""

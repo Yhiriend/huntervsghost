@@ -90,9 +90,11 @@ func find_capturable_ghost() -> Ghost:
 
 func _process_actions(delta: float) -> void:
 	net_cooldown_left = maxf(0.0, net_cooldown_left - delta)
+	var was_capturing := capture_target != null
 	_update_capture(delta)
-	# Capturar tiene prioridad sobre usar objetos (puertas, armarios...).
-	if capture_target == null and (interact_target != null or find_capturable_ghost() == null):
+	# Capturar tiene prioridad sobre usar objetos (puertas, armarios...). El E de una captura
+	# recién terminada no debe "usar" también el objeto más cercano.
+	if not was_capturing and capture_target == null and (interact_target != null or find_capturable_ghost() == null):
 		_update_interaction(delta)
 	if intent.fire and is_net_ready() and capture_target == null and interact_target == null:
 		fire_net()

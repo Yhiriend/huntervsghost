@@ -38,6 +38,10 @@ func setup(spawn: DummySpawn) -> void:
 	reset()
 
 
+func get_tag() -> String:
+	return "DUMMY"
+
+
 func reset() -> void:
 	_index = 0
 	_seen_time = 0.0

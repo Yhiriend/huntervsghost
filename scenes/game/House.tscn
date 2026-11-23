@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/objects/light_switch.gd" id="2_switch"]
 [ext_resource type="Script" path="res://scripts/objects/door.gd" id="3_door"]
 [ext_resource type="Script" path="res://scripts/objects/hiding_spot.gd" id="4_hiding"]
+[ext_resource type="Script" path="res://scripts/objects/house.gd" id="5_house"]
 
 [sub_resource type="StandardMaterial3D" id="Material_wall"]
 albedo_color = Color(0.24, 0.27, 0.36, 1)
@@ -24,6 +25,7 @@ albedo_color = Color(0.33, 0.4, 0.52, 1)
 albedo_color = Color(0.42, 0.3, 0.2, 1)
 
 [node name="House" type="Node3D"]
+script = ExtResource("5_house")
 
 [node name="Geometry" type="CSGCombiner3D" parent="."]
 use_collision = true

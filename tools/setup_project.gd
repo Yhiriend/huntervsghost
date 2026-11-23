@@ -42,6 +42,8 @@ func _setup_input_map() -> void:
 	_action("scene_1", [_key(KEY_1)])
 	_action("scene_2", [_key(KEY_2)])
 	_action("scene_3", [_key(KEY_3)])
+	_action("scene_4", [_key(KEY_4)])
+	_action("spectate", [_key(KEY_P)])
 	_action("back_to_menu", [_key(KEY_ESCAPE), _joy(JOY_BUTTON_START)])
 
 

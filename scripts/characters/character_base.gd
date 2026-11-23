@@ -136,7 +136,12 @@ func _update_interaction(delta: float) -> void:
 	if interact_target == null:
 		if not intent.interact:
 			return
-		var item := find_interactable()
+		# Si se indica un objeto concreto (IA) y no se puede usar ahora, no se usa otro en su lugar.
+		var item := intent.interact_with
+		if item == null:
+			item = find_interactable()
+		elif not item.is_in_range(self) or item.get_prompt(self) == "":
+			return
 		if item == null:
 			return
 		if item.get_hold_time(self) <= 0.0:
@@ -145,7 +150,7 @@ func _update_interaction(delta: float) -> void:
 			interact_target = item
 			interact_progress = 0.0
 		return
-	if not intent.interact_held or not interact_target.is_in_range(self) or interact_target.get_prompt(self) == "":
+	if not intent.interact_held or not is_instance_valid(interact_target) or not interact_target.is_in_range(self) or interact_target.get_prompt(self) == "":
 		cancel_interaction()
 		return
 	interact_progress += delta
@@ -215,5 +220,6 @@ func _update_footsteps(delta: float, current_speed: float, max_speed: float) -> 
 func _update_label() -> void:
 	if not _label:
 		return
-	_label.text = "%s\n%s" % [display_name, "TÚ" if is_player_controlled else "DUMMY"]
+	var tag := "TÚ" if is_player_controlled else (controller.get_tag() if controller else "")
+	_label.text = "%s\n%s" % [display_name, tag]
 	_label.modulate = PLAYER_LABEL_COLOR if is_player_controlled else DUMMY_LABEL_COLOR

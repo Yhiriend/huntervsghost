@@ -2,16 +2,17 @@ extends CanvasLayer
 ## Autoload "DebugOverlay": FPS, ayuda de controles y panel de ajustes en caliente.
 ##   F1 -> mostrar/ocultar el panel de ajustes.
 ##   F2 -> mostrar/ocultar los conos de visión (activos por defecto).
-##   1/2/3 -> cambiar de escenario (Prototype01 / TestHunter / TestGhost).
+##   1-4 -> cambiar de escenario (Prototype01 / TestHunter / TestGhost / TestAI).
 ##   Esc -> volver al menú principal.
 ## El panel se genera solo a partir de las variables @export_range de GameConfig.
 
-const HELP_TEXT := "WASD mover · Ratón apuntar · Clic red · E usar (mantener: capturar/registrar) · Shift sigilo · Tab cambiar · R reiniciar · F1 ajustes · F2 conos · 1/2/3 escenario · Esc menú"
+const HELP_TEXT := "WASD mover · Ratón apuntar · Clic red · E usar (mantener: capturar/registrar) · Shift sigilo · Tab cambiar · R reiniciar · F1 ajustes · P espectador · F2 conos · 1-4 escenario · Esc menú"
 ## Escenarios accesibles con las teclas 1, 2 y 3.
 const SCENES := {
 	"scene_1": "res://scenes/test/Prototype01.tscn",
 	"scene_2": "res://scenes/test/TestHunter.tscn",
 	"scene_3": "res://scenes/test/TestGhost.tscn",
+	"scene_4": "res://scenes/test/TestAI.tscn",
 }
 const REFRESH_INTERVAL := 0.25
 

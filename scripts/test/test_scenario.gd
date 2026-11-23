@@ -4,6 +4,7 @@ extends Node3D
 ## Crea un personaje por cada DummySpawn hijo de "Spawns".
 ##   Tab -> pasar el control al siguiente personaje.
 ##   R   -> reiniciar el escenario (personajes, puertas, luces y armarios).
+##   P   -> modo espectador: soltar el personaje (vuelve a su IA/maniquí); Tab cambia de cámara.
 ## Jugando como Hunter, solo se ven los Ghosts que están dentro de su visión
 ## y los ruidos de los Ghosts aparecen como anillos en una posición aproximada.
 
@@ -18,18 +19,23 @@ const OWN_NOISE_COLOR := Color(1, 1, 1, 0.25)
 @export var rooms_dark: PackedStringArray = []
 ## Puertas (nombre del nodo Door) que empiezan cerradas.
 @export var doors_closed: PackedStringArray = []
-## Permite cambiar de personaje con Tab.
+## Permite cambiar de personaje con Tab y el modo espectador (P).
 @export var allow_switch: bool = true
+## Empieza en modo espectador (sin controlar a nadie).
+@export var start_spectating: bool = false
 
 
 class Entry:
 	var spawn: DummySpawn
 	var character: CharacterBase
-	var dummy: DummyController
+	## Quien lo controla cuando no lo controla el jugador (maniquí o IA).
+	var fallback: CharacterController
 
 
 var _entries: Array[Entry] = []
 var _controlled: int = -1
+## Personaje al que sigue la cámara en modo espectador.
+var _watched: int = -1
 var _player_input := PlayerInput.new()
 var _hud := HUD.new()
 
@@ -61,7 +67,10 @@ func _ready() -> void:
 		push_warning("El escenario no tiene ningún DummySpawn en 'Spawns'.")
 		return
 	_apply_initial_state()
-	_take_control(start_index, true)
+	if start_spectating:
+		_spectate(start_index, true)
+	else:
+		_take_control(start_index, true)
 	if description != "":
 		_hud.show_message(description, 6.0)
 
@@ -77,7 +86,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		reset_scenario()
 		get_viewport().set_input_as_handled()
 	elif allow_switch and event.is_action_pressed("switch_character"):
-		_take_control((_controlled + 1) % _entries.size())
+		if _controlled < 0:
+			_spectate((_watched + 1) % _entries.size())
+		else:
+			_take_control((_controlled + 1) % _entries.size())
+		get_viewport().set_input_as_handled()
+	elif allow_switch and event.is_action_pressed("spectate"):
+		if _controlled < 0:
+			_take_control(maxi(_watched, 0))
+		else:
+			_spectate(_controlled)
 		get_viewport().set_input_as_handled()
 
 
@@ -87,7 +105,7 @@ func reset_scenario() -> void:
 	for entry in _entries:
 		entry.character.global_transform = entry.spawn.global_transform
 		entry.character.reset_state()
-		entry.dummy.reset()
+		entry.fallback.reset()
 	_apply_initial_state()
 	_camera_rig.snap()
 	_hud.show_message(description if description != "" else "Escenario reiniciado", 3.0)
@@ -127,14 +145,22 @@ func _find_hiding_spot(spot_name: String) -> HidingSpot:
 func _spawn_character(spawn: DummySpawn) -> Entry:
 	var scene := HUNTER_SCENE if spawn.role == DummySpawn.Role.HUNTER else GHOST_SCENE
 	var character := scene.instantiate() as CharacterBase
+	character.name = spawn.name
 	_characters_root.add_child(character)
 	character.global_transform = spawn.global_transform
 
-	var dummy := DummyController.new()
-	dummy.name = "DummyController"
-	character.add_child(dummy)
-	dummy.setup(spawn)
-	character.set_controller(dummy, false)
+	var fallback: CharacterController
+	if spawn.behavior == DummySpawn.Behavior.AI:
+		fallback = HunterAI.new() if character is Hunter else GhostAI.new()
+		fallback.name = "AI"
+		character.add_child(fallback)
+	else:
+		var dummy := DummyController.new()
+		dummy.name = "DummyController"
+		character.add_child(dummy)
+		dummy.setup(spawn)
+		fallback = dummy
+	character.set_controller(fallback, false)
 
 	if character is Ghost:
 		(character as Ghost).state_changed.connect(_on_ghost_state_changed)
@@ -142,19 +168,35 @@ func _spawn_character(spawn: DummySpawn) -> Entry:
 	var entry := Entry.new()
 	entry.spawn = spawn
 	entry.character = character
-	entry.dummy = dummy
+	entry.fallback = fallback
 	return entry
 
 
-func _take_control(index: int, snap_camera: bool = false) -> void:
+func _release_control() -> void:
 	if _controlled >= 0:
 		var previous := _entries[_controlled]
-		previous.character.set_controller(previous.dummy, false)
+		previous.character.set_controller(previous.fallback, false)
+	_controlled = -1
+
+
+func _take_control(index: int, snap_camera: bool = false) -> void:
+	_release_control()
+	_watched = -1
 	_controlled = index
 	var current := _entries[_controlled]
 	current.character.set_controller(_player_input, true)
 	_camera_rig.set_target(current.character, snap_camera)
 	_hud.set_controlled(current.character)
+	_update_player_visibility()
+
+
+## Modo espectador: nadie es el jugador; la cámara sigue a un personaje y se ve todo.
+func _spectate(index: int, snap_camera: bool = false) -> void:
+	_release_control()
+	_watched = index
+	_camera_rig.set_target(_entries[index].character, snap_camera)
+	_hud.set_controlled(null)
+	_hud.show_message("Espectador: %s  (Tab cambia de cámara, P para controlarlo)" % _entries[index].character.name, 3.0)
 	_update_player_visibility()
 
 
@@ -176,6 +218,10 @@ func _update_player_visibility() -> void:
 func _on_noise_made(noise_position: Vector3, radius: float, source: Node) -> void:
 	var player := get_controlled_character()
 	if player == null:
+		# Espectador: todos los ruidos en su posición real, con el color de quien lo hace.
+		if source is CharacterBase:
+			var color := Color(1.0, 0.55, 0.2, 0.7) if source is Hunter else Color(0.45, 0.85, 1.0, 0.7)
+			_spawn_noise_ring(noise_position, color, 0.8)
 		return
 	if source == player:
 		_spawn_noise_ring(noise_position, OWN_NOISE_COLOR, 0.6)

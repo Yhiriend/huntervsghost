@@ -6,7 +6,8 @@ extends Marker3D
 
 enum Role { HUNTER, GHOST }
 ## STATIC: quieto. ROUTE: recorre en bucle los puntos de un Path3D (abre las puertas que encuentre).
-enum Behavior { STATIC, ROUTE }
+## AI: lo controla la inteligencia artificial (HunterAI / GhostAI).
+enum Behavior { STATIC, ROUTE, AI }
 
 @export var role: Role = Role.GHOST
 @export var behavior: Behavior = Behavior.STATIC

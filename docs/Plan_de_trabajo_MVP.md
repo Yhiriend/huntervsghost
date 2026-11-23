@@ -181,12 +181,12 @@ Cada fase termina en algo **jugable** y en una **puerta de decisión**. Estimaci
 
 ### Fase 5 — Inteligencia artificial · ~5 jornadas
 *(Hito 4 del GDD)*
-- [ ] `NavigationRegion3D` generada con las puertas abiertas; la IA abre las puertas cerradas al llegar.
-- [ ] **Ghost IA primero** (el modo principal es Hunter humano vs 2 Ghosts): `ROAM`, `FLEE`, `HIDE`, `ESCAPE`.
-- [ ] **Hunter IA**: `PATROL`, `INVESTIGATE`, `CHASE`, `ATTACK`, `CAPTURE`, `SEARCH`, usando solo visión y ruido.
-- [ ] `Label3D` encima de cada IA con su estado actual (depuración).
-- [ ] Dificultad básica: tiempo de reacción y precisión configurables.
-- [ ] Reutilizar los escenarios de prueba para depurar cada estado (ej.: Ghost IA junto a un armario y Hunter acercándose → ¿se esconde?).
+- [x] `NavigationRegion3D` generada al arrancar (sin las puertas); la IA abre las puertas cerradas al llegar.
+- [x] **Ghost IA**: `ROAM`, `IDLE`, `FLEE` (cierra puertas, busca la oscuridad y romper la línea de visión), `HIDE`/`HIDDEN` (solo si no le ven), `ESCAPE`; apaga luces.
+- [x] **Hunter IA**: `PATROL`, `INVESTIGATE`, `CHASE` (incluye disparar), `CAPTURE`, `SEARCH`, usando solo visión, ruido y el latido de los armarios; enciende luces.
+- [x] `Label3D` encima de cada IA con su estado actual (visible con F2).
+- [x] Dificultad: reacción, error de puntería, anticipación, prob. de registrar/esconderse/apagar luces… en el panel F1 (grupo IA).
+- [x] Escenario `TestAI` (tecla 4): IA contra IA en modo espectador (P toma/suelta el control) + simulador `tools/ai_simulation.tscn` para equilibrar sin mirar.
 
 ### Fase 6 — Prueba de diversión · ~1–2 jornadas + continuo
 **Puerta principal del MVP.** Primeras partidas completas contra la IA, en ambos roles.

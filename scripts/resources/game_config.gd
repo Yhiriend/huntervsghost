@@ -60,6 +60,28 @@ extends Resource
 ## Error máximo (m) de la posición que se muestra al Hunter: el ruido es información imperfecta.
 @export_range(0.0, 6.0, 0.25) var noise_position_error: float = 2.0
 
+@export_group("IA")
+## Segundos que la IA Hunter tarda en disparar desde que ve a un Ghost.
+@export_range(0.0, 3.0, 0.05) var ai_reaction_time: float = 0.8
+## Error de puntería de la IA Hunter (metros, aleatorio en cada disparo).
+@export_range(0.0, 4.0, 0.05) var ai_aim_error: float = 2.0
+## Cuánto anticipa la IA Hunter el movimiento del Ghost (0 = apunta donde está, 1 = predicción perfecta).
+@export_range(0.0, 1.0, 0.05) var ai_lead_factor: float = 0.4
+## Probabilidad de que la IA Hunter registre un armario al pasar junto a él patrullando.
+@export_range(0.0, 1.0, 0.05) var ai_hunter_search_chance: float = 0.35
+## La IA Hunter patrulla caminando en sigilo (más lenta y sin ruido) y solo corre si tiene una pista.
+@export var ai_hunter_patrol_sneak: bool = true
+## Segundos que la IA recuerda un ruido.
+@export_range(0.5, 15.0, 0.5) var ai_noise_memory: float = 4.0
+## Distancia a la que un Ghost IA empieza a huir del Hunter.
+@export_range(2.0, 15.0, 0.5) var ai_ghost_flee_distance: float = 9.0
+## Probabilidad de que un Ghost IA perseguido intente esconderse en vez de seguir huyendo.
+@export_range(0.0, 1.0, 0.05) var ai_ghost_hide_chance: float = 0.5
+## Segundos mínimos que un Ghost IA se queda en el armario tras dejar de percibir al Hunter.
+@export_range(1.0, 60.0, 1.0) var ai_ghost_min_hide_time: float = 8.0
+## Probabilidad de que un Ghost IA apague la luz al pasar junto a un interruptor.
+@export_range(0.0, 1.0, 0.05) var ai_ghost_light_chance: float = 0.6
+
 @export_group("Maniquíes")
 ## Segundos que un maniquí Hunter "torreta" debe verte antes de disparar.
 @export_range(0.0, 3.0, 0.05) var dummy_reaction_time: float = 0.4

@@ -1,9 +1,10 @@
 class_name MatchScenario
 extends TestScenario
 ## Partida completa: preparación -> persecución con temporizador -> resultados.
-## Hasta que exista la IA (Fase 5) los rivales son maniquíes:
-##   Jugando como Hunter: ghost_count Ghosts quietos en sitios aleatorios (algunos dentro de armarios).
-##   Jugando como Ghost (1 vs 1): un Hunter que patrulla, dispara si te ve y te captura si te atrapa.
+## Los rivales los controla la IA:
+##   Jugando como Hunter: ghost_count Ghosts IA que empiezan en sitios aleatorios y aprovechan
+##     la preparación para alejarse o esconderse.
+##   Jugando como Ghost (1 vs 1): un Hunter IA.
 ## Victoria del Hunter: todos los Ghosts capturados antes de que acabe el tiempo.
 ## Victoria de los Ghosts: al menos uno libre cuando el tiempo llega a cero.
 ## La captura se comprueba antes que el tiempo: una captura completada en el último frame cuenta.
@@ -99,23 +100,16 @@ func _build_spawns() -> void:
 			_add_random_ghost(i)
 	else:
 		_add_spawn("Ghost", ROLE_GHOST, (_points.get_node("GhostStart") as Marker3D).global_transform, {"player_start": true})
-		_add_spawn("Hunter", ROLE_HUNTER, hunter_start.global_transform, {
-			"behavior": DummySpawn.Behavior.ROUTE,
-			"shoots_on_sight": true,
-			"captures_netted": true,
-		})
+		_add_spawn("Hunter", ROLE_HUNTER, hunter_start.global_transform, {"behavior": DummySpawn.Behavior.AI})
 
 
-## Candidatos: los Marker3D de Points/GhostSpots y los armarios. Cada Ghost usa uno distinto.
+## Cada Ghost IA empieza en un Marker3D distinto de Points/GhostSpots.
 func _add_random_ghost(index: int) -> void:
 	if _ghost_candidates.is_empty():
 		_ghost_candidates.append_array(_points.get_node("GhostSpots").get_children())
-		_ghost_candidates.append_array(get_tree().get_nodes_in_group("hiding_spots"))
 		_ghost_candidates.shuffle()
 	var candidate: Node3D = _ghost_candidates.pop_back()
-	var props := {}
-	if candidate is HidingSpot:
-		props["start_hidden_in"] = String(candidate.name)
+	var props := {"behavior": DummySpawn.Behavior.AI}
 	var basis := Basis(Vector3.UP, randf() * TAU)
 	_add_spawn("Ghost%d" % (index + 1), ROLE_GHOST, Transform3D(basis, candidate.global_position), props)
 
