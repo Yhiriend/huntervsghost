@@ -1,0 +1,70 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/test/test_scenario.gd" id="1_scenario"]
+[ext_resource type="PackedScene" path="res://scenes/game/House.tscn" id="2_house"]
+[ext_resource type="Script" path="res://scripts/camera/camera_rig.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scripts/test/dummy_spawn.gd" id="4_spawn"]
+
+[sub_resource type="Environment" id="Environment_house"]
+background_mode = 1
+background_color = Color(0.03, 0.04, 0.08, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.35, 0.4, 0.7, 1)
+ambient_light_energy = 0.55
+
+[sub_resource type="Curve3D" id="Curve3D_patrulla"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 5, 0, 1.5, 0, 0, 0, 0, 0, 0, 5, 0, -1.5, 0, 0, 0, 0, 0, 0, 1, 0, -4, 0, 0, 0, 0, 0, 0, -3, 0, -4, 0, 0, 0, 0, 0, 0, -5, 0, -1.2, 0, 0, 0, 0, 0, 0, -5, 0, 1.5, 0, 0, 0, 0, 0, 0, -7, 0, 1.5, 0, 0, 0, 0, 0, 0, -7, 0, 4.5, 0, 0, 0, 0, 0, 0, -3, 0, 4.5, 0, 0, 0, 0, 0, 0, 3, 0, 4.5, 0, 0, 0, 0, 0, 0, 7, 0, 4.5, 0, 0, 0, 0, 0, 0, 7, 0, 1.5),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+point_count = 12
+
+[node name="TestGhost" type="Node3D"]
+script = ExtResource("1_scenario")
+description = "TEST GHOST: un Hunter vigila el pasillo y otro patrulla la casa. Ambos disparan si te ven. Usa puertas, luces, armarios y sigilo (Shift)."
+rooms_dark = PackedStringArray()
+doors_closed = PackedStringArray()
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_house")
+
+[node name="House" parent="." instance=ExtResource("2_house")]
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("3_camera")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+transform = Transform3D(1, 0, 0, 0, 0.422618, 0.906308, 0, -0.906308, 0.422618, 0, 18.1262, 8.45237)
+projection = 1
+current = true
+size = 16.0
+far = 200.0
+
+[node name="Characters" type="Node3D" parent="."]
+
+[node name="Routes" type="Node3D" parent="."]
+
+[node name="RutaPatrulla" type="Path3D" parent="Routes"]
+curve = SubResource("Curve3D_patrulla")
+
+[node name="Spawns" type="Node3D" parent="."]
+
+[node name="Ghost" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -3.5)
+script = ExtResource("4_spawn")
+player_start = true
+
+[node name="HunterVigia" type="Marker3D" parent="Spawns"]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -8.5, 0, 1.5)
+script = ExtResource("4_spawn")
+role = 0
+shoots_on_sight = true
+
+[node name="HunterPatrulla" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 1.5)
+script = ExtResource("4_spawn")
+role = 0
+behavior = 1
+route = NodePath("../../Routes/RutaPatrulla")
+shoots_on_sight = true
+

@@ -1,0 +1,50 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/characters/hunter.gd" id="1_hunter"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.4
+height = 1.6
+
+[sub_resource type="StandardMaterial3D" id="Material_body"]
+albedo_color = Color(1, 0.55, 0.15, 1)
+roughness = 0.6
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+material = SubResource("Material_body")
+radius = 0.4
+height = 1.6
+
+[sub_resource type="StandardMaterial3D" id="Material_nose"]
+albedo_color = Color(0.45, 0.2, 0.05, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_nose"]
+material = SubResource("Material_nose")
+size = Vector3(0.25, 0.25, 0.5)
+
+[node name="Hunter" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 3
+script = ExtResource("1_hunter")
+display_name = "HUNTER"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="Launcher" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, -0.45)
+mesh = SubResource("BoxMesh_nose")
+
+[node name="NameLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+pixel_size = 0.008
+billboard = 1
+no_depth_test = true
+font_size = 40
+outline_size = 12
+text = "HUNTER"

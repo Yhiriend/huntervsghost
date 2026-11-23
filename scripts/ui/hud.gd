@@ -1,0 +1,153 @@
+class_name HUD
+extends CanvasLayer
+## HUD mínimo: Ghosts libres, estado de la red / del Ghost, botón contextual,
+## barra de progreso (captura / registro) y mensajes temporales.
+
+const MESSAGE_FADE_TIME := 0.5
+
+var _controlled: CharacterBase
+var _ghosts_label: Label
+var _status_label: Label
+var _prompt_label: Label
+var _capture_bar: ProgressBar
+var _message_label: Label
+var _message_time_left: float = 0.0
+
+
+func _ready() -> void:
+	layer = 10
+	_build_ui()
+
+
+func set_controlled(character: CharacterBase) -> void:
+	_controlled = character
+
+
+func show_message(text: String, duration: float = 2.0) -> void:
+	_message_label.text = text
+	_message_time_left = duration
+
+
+func _process(delta: float) -> void:
+	_update_ghost_count()
+	_update_status()
+	_message_time_left = maxf(0.0, _message_time_left - delta)
+	_message_label.modulate.a = clampf(_message_time_left / MESSAGE_FADE_TIME, 0.0, 1.0)
+
+
+func _update_ghost_count() -> void:
+	var ghosts := get_tree().get_nodes_in_group("ghosts")
+	var free_count := 0
+	for node in ghosts:
+		if (node as Ghost).state != Ghost.State.CAPTURED:
+			free_count += 1
+	_ghosts_label.text = "Ghosts libres: %d / %d" % [free_count, ghosts.size()]
+
+
+func _update_status() -> void:
+	_prompt_label.text = ""
+	_capture_bar.visible = false
+	_status_label.text = ""
+	if _controlled == null:
+		return
+
+	if _controlled is Hunter:
+		var hunter := _controlled as Hunter
+		_status_label.text = "Red: LISTA" if hunter.is_net_ready() else "Red: %.1f s" % hunter.net_cooldown_left
+		if hunter.capture_target:
+			_show_progress("CAPTURANDO...", hunter.capture_progress / GameManager.config.capture_time)
+			return
+		if hunter.interact_target == null and hunter.find_capturable_ghost():
+			_prompt_label.text = "Mantén [E] · CAPTURAR"
+			return
+	elif _controlled is Ghost:
+		var ghost := _controlled as Ghost
+		match ghost.state:
+			Ghost.State.FREE:
+				_status_label.text = "Libre" if ghost.can_hide() else "Libre · no puedes esconderte (%.1f s)" % ghost.hide_cooldown_left
+			Ghost.State.NETTED:
+				_status_label.text = "¡ATRAPADO! Te liberas en %.1f s" % ghost.net_time_left
+			Ghost.State.HIDDEN:
+				_status_label.text = "Escondido en el armario"
+			Ghost.State.CAPTURED:
+				_status_label.text = "Capturado (Tab para cambiar de personaje)"
+
+	_update_interaction_prompt()
+
+
+## Botón contextual: "[E] ABRIR", "Mantén [E] · REGISTRAR" y su barra de progreso.
+func _update_interaction_prompt() -> void:
+	var target := _controlled.interact_target
+	if target:
+		var hold := target.get_hold_time(_controlled)
+		_show_progress("%s..." % target.get_prompt(_controlled), _controlled.interact_progress / maxf(hold, 0.001))
+		return
+	var item := _controlled.find_interactable()
+	if item == null:
+		return
+	var prompt := item.get_prompt(_controlled)
+	_prompt_label.text = ("Mantén [E] · %s" if item.get_hold_time(_controlled) > 0.0 else "[E] %s") % prompt
+
+
+func _show_progress(text: String, progress: float) -> void:
+	_prompt_label.text = text
+	_capture_bar.visible = true
+	_capture_bar.value = clampf(progress, 0.0, 1.0)
+
+
+# --- Construcción --------------------------------------------------------------
+
+func _build_ui() -> void:
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(root)
+
+	var top := VBoxContainer.new()
+	top.anchor_left = 0.5
+	top.anchor_right = 0.5
+	top.offset_left = -300.0
+	top.offset_right = 300.0
+	top.offset_top = 10.0
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(top)
+	_ghosts_label = _make_label(24)
+	top.add_child(_ghosts_label)
+	_status_label = _make_label(18)
+	top.add_child(_status_label)
+	_message_label = _make_label(26)
+	_message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_message_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
+	top.add_child(_message_label)
+
+	var bottom := VBoxContainer.new()
+	bottom.anchor_left = 0.5
+	bottom.anchor_right = 0.5
+	bottom.anchor_top = 1.0
+	bottom.anchor_bottom = 1.0
+	bottom.offset_left = -200.0
+	bottom.offset_right = 200.0
+	bottom.offset_top = -130.0
+	bottom.offset_bottom = -50.0
+	bottom.alignment = BoxContainer.ALIGNMENT_END
+	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(bottom)
+	_prompt_label = _make_label(22)
+	bottom.add_child(_prompt_label)
+	_capture_bar = ProgressBar.new()
+	_capture_bar.max_value = 1.0
+	_capture_bar.show_percentage = false
+	_capture_bar.custom_minimum_size = Vector2(0, 18)
+	_capture_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_capture_bar.visible = false
+	bottom.add_child(_capture_bar)
+
+
+func _make_label(font_size: int) -> Label:
+	var label := Label.new()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 6)
+	return label

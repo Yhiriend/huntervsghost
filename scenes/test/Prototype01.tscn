@@ -1,0 +1,53 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/test/test_scenario.gd" id="1_scenario"]
+[ext_resource type="PackedScene" path="res://scenes/game/House.tscn" id="2_house"]
+[ext_resource type="Script" path="res://scripts/camera/camera_rig.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scripts/test/dummy_spawn.gd" id="4_spawn"]
+
+[sub_resource type="Environment" id="Environment_house"]
+background_mode = 1
+background_color = Color(0.03, 0.04, 0.08, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.35, 0.4, 0.7, 1)
+ambient_light_energy = 0.55
+
+[node name="Prototype01" type="Node3D"]
+script = ExtResource("1_scenario")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_house")
+
+[node name="House" parent="." instance=ExtResource("2_house")]
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("3_camera")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+transform = Transform3D(1, 0, 0, 0, 0.422618, 0.906308, 0, -0.906308, 0.422618, 0, 18.1262, 8.45237)
+projection = 1
+current = true
+size = 16.0
+far = 200.0
+
+[node name="Spawns" type="Node3D" parent="."]
+
+[node name="HunterSpawn" type="Marker3D" parent="Spawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -3)
+script = ExtResource("4_spawn")
+role = 0
+player_start = true
+
+[node name="GhostSpawnSala" type="Marker3D" parent="Spawns"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 0, -5.5)
+script = ExtResource("4_spawn")
+
+[node name="GhostSpawnCocina" type="Marker3D" parent="Spawns"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 7, 0, -5.5)
+script = ExtResource("4_spawn")
+
+[node name="GhostSpawnDormitorio" type="Marker3D" parent="Spawns"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 7.5, 0, 6)
+script = ExtResource("4_spawn")
+
+[node name="Characters" type="Node3D" parent="."]
