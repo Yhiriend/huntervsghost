@@ -13,6 +13,9 @@ func _init() -> void:
 	ProjectSettings.set_setting("application/config/name", "Ghost-Hunter")
 	ProjectSettings.set_setting("layer_names/3d_physics/layer_1", "world")
 	ProjectSettings.set_setting("layer_names/3d_physics/layer_2", "characters")
+	# Móvil: horizontal (gira con el sensor) y el botón Atrás lo gestiona el juego.
+	ProjectSettings.set_setting("display/window/handheld/orientation", 4)
+	ProjectSettings.set_setting("application/config/quit_on_go_back", false)
 	var err := ProjectSettings.save()
 	print("project.godot guardado: ", error_string(err))
 

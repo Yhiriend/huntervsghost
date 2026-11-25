@@ -6,6 +6,7 @@ extends CanvasLayer
 ##   Esc -> volver al menú principal.
 ## El panel se genera solo a partir de las variables @export_range de GameConfig.
 
+const TOUCH_HELP_TEXT := "Joystick: mover (poco inclinado = sigilo) · RED: disparar (apunta sola al Ghost visible) · Botón verde: usar (mantener: capturar/registrar)"
 const HELP_TEXT := "WASD mover · Ratón apuntar · Clic red · E usar (mantener: capturar/registrar) · Shift sigilo · Tab cambiar · R reiniciar · F1 ajustes · P espectador · F2 conos · 1-4 escenario · Esc menú"
 ## Pantallas sin ayuda de controles.
 const NO_HELP_SCENES := ["res://scenes/main/MainMenu.tscn", "res://scenes/main/PlaytestSummary.tscn"]
@@ -26,6 +27,12 @@ var _status_label: Label
 var _rows: Dictionary = {}
 var _refresh_timer: float = 0.0
 var _status_time_left: float = 0.0
+## Botones Menú / Ajustes / Conos (solo con controles táctiles).
+var _touch_bar: HBoxContainer
+## En táctil la ayuda solo se ve unos segundos al entrar en cada escena (tapa los botones).
+const TOUCH_HELP_SECONDS := 10.0
+var _scene_time: float = 0.0
+var _last_scene: Node
 
 
 func _ready() -> void:
@@ -34,14 +41,33 @@ func _ready() -> void:
 	_build_ui()
 
 
+## Botón "Atrás" de Android: como Esc (en el menú principal, salir).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		var current := get_tree().current_scene
+		if current and current.scene_file_path != GameManager.MENU_SCENE:
+			GameManager.go_to_menu()
+		else:
+			get_tree().quit()
+
+
+func toggle_panel() -> void:
+	_panel.visible = not _panel.visible
+	if _panel.visible:
+		_refresh_values()
+
+
+func toggle_vision() -> void:
+	GameManager.debug_vision = not GameManager.debug_vision
+	_set_status("Conos de visión: %s" % ("ON" if GameManager.debug_vision else "OFF"))
+
+
 func _input(event: InputEvent) -> void:
 	# Mientras se escribe en un campo de texto, las teclas no son atajos.
 	if get_viewport().gui_get_focus_owner() is LineEdit:
 		return
 	if event.is_action_pressed("debug_panel"):
-		_panel.visible = not _panel.visible
-		if _panel.visible:
-			_refresh_values()
+		toggle_panel()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.is_pressed() and not event.is_echo():
 		for action in SCENES:
@@ -56,15 +82,25 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("debug_vision"):
-		GameManager.debug_vision = not GameManager.debug_vision
-		_set_status("Conos de visión: %s" % ("ON" if GameManager.debug_vision else "OFF"))
+		toggle_vision()
 		get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:
-	_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
+	_fps_label.text = "%d FPS · %d draw calls" % [Engine.get_frames_per_second(),
+		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)]
 	var current := get_tree().current_scene
-	_help_label.visible = current != null and not current.scene_file_path in NO_HELP_SCENES
+	var touch := GameManager.is_touch_mode()
+	var in_game := current != null and not current.scene_file_path in NO_HELP_SCENES
+	if current != _last_scene:
+		_last_scene = current
+		_scene_time = 0.0
+	_scene_time += delta
+	_help_label.visible = in_game and (not touch or _scene_time < TOUCH_HELP_SECONDS)
+	_help_label.text = TOUCH_HELP_TEXT if touch else HELP_TEXT
+	_touch_bar.visible = touch and in_game
+	# Con la barra táctil, el panel empieza debajo de ella.
+	_panel.offset_top = 64.0 if _touch_bar.visible else 8.0
 	if _status_time_left > 0.0:
 		_status_time_left -= delta
 		if _status_time_left <= 0.0:
@@ -88,7 +124,7 @@ func _build_ui() -> void:
 	_fps_label = Label.new()
 	_fps_label.anchor_left = 1.0
 	_fps_label.anchor_right = 1.0
-	_fps_label.offset_left = -160.0
+	_fps_label.offset_left = -300.0
 	_fps_label.offset_right = -12.0
 	_fps_label.offset_top = 8.0
 	_fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -149,6 +185,18 @@ func _build_ui() -> void:
 	var save_button := _make_button("Guardar en .tres", _on_save_pressed)
 	save_button.disabled = not OS.has_feature("editor")
 	buttons.add_child(save_button)
+
+	_touch_bar = HBoxContainer.new()
+	_touch_bar.offset_left = 8.0
+	_touch_bar.offset_top = 8.0
+	_touch_bar.add_theme_constant_override("separation", 8)
+	_touch_bar.visible = false
+	root.add_child(_touch_bar)
+	for item in [["Menú", GameManager.go_to_menu], ["Ajustes", toggle_panel], ["Conos", toggle_vision]]:
+		var button := _make_button(item[0], item[1])
+		button.custom_minimum_size = Vector2(84, 46)
+		button.add_theme_font_size_override("font_size", 16)
+		_touch_bar.add_child(button)
 
 	_status_label = Label.new()
 	_status_label.anchor_left = 1.0

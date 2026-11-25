@@ -1,0 +1,283 @@
+class_name TouchControls
+extends Control
+## Controles táctiles (multitáctil):
+##   - Joystick flotante en la mitad izquierda: aparece donde pones el dedo.
+##     Poco inclinado = sigilo; inclinado del todo = correr.
+##   - Botón RED (solo Hunter) con el tiempo de recarga dibujado alrededor.
+##   - Botón de acción contextual con el texto de la acción (ABRIR, ESCONDERSE, CAPTURAR...).
+##     Las acciones de mantener muestran el progreso alrededor del botón.
+##   - En los escenarios de prueba: botones Cambiar (Tab), Espectador (P) y Reiniciar (R).
+## PlayerInput lee el estado con las variables estáticas (move, interact_held, take_fire()...).
+## En PC se puede probar con el ratón (ajuste "touch controls on pc" en F1).
+
+const BASE_RADIUS := 80.0
+const KNOB_RADIUS := 34.0
+const FIRE_RADIUS := 68.0
+const ACTION_RADIUS := 58.0
+## Los botones aceptan toques un poco fuera de su círculo (dedos imprecisos).
+const HIT_SLOP := 1.3
+const DEAD_ZONE := 0.15
+## Índice de toque que se usa para el ratón al probar en PC.
+const MOUSE_INDEX := 1000
+
+const COLOR_BASE := Color(1, 1, 1, 0.12)
+const COLOR_RING := Color(1, 1, 1, 0.45)
+const COLOR_SNEAK := Color(0.45, 0.75, 1.0, 0.8)
+const COLOR_FIRE := Color(1.0, 0.55, 0.2, 0.55)
+const COLOR_FIRE_OFF := Color(0.5, 0.5, 0.5, 0.35)
+const COLOR_ACTION := Color(0.3, 0.85, 0.5, 0.55)
+const COLOR_PRESSED := Color(1, 1, 1, 0.35)
+const COLOR_PROGRESS := Color(1.0, 0.9, 0.3, 0.95)
+
+# --- Estado que lee PlayerInput ---------------------------------------------------
+## Dirección del joystick (pantalla: x derecha, y abajo), longitud 0-1.
+static var move := Vector2.ZERO
+static var interact_held := false
+static var _fire_queued := false
+static var _interact_queued := false
+
+# --- Lo que muestra (lo rellena el HUD) -------------------------------------------
+var show_fire := false
+## 0 = recién disparada, 1 = lista.
+var fire_ready := 1.0
+var action_text := ""
+var action_hold := false
+## Progreso de la acción en curso (0-1) o < 0 si no hay.
+var action_progress := -1.0
+## Muestra el joystick y los botones (hay un personaje controlado).
+var controls_enabled := false
+
+var _joy_index := -1
+var _joy_center := Vector2.ZERO
+var _fire_index := -1
+var _action_index := -1
+var _mouse_down := false
+var _scenario_bar: HBoxContainer
+
+
+## Devuelve true una vez por cada pulsación del botón RED.
+static func take_fire() -> bool:
+	var value := _fire_queued
+	_fire_queued = false
+	return value
+
+
+## Devuelve true una vez por cada pulsación del botón de acción.
+static func take_interact() -> bool:
+	var value := _interact_queued
+	_interact_queued = false
+	return value
+
+
+static func clear_state() -> void:
+	move = Vector2.ZERO
+	interact_held = false
+	_fire_queued = false
+	_interact_queued = false
+
+
+func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scenario_bar = HBoxContainer.new()
+	_scenario_bar.anchor_left = 1.0
+	_scenario_bar.anchor_right = 1.0
+	_scenario_bar.offset_left = -400.0
+	_scenario_bar.offset_right = -12.0
+	_scenario_bar.offset_top = 64.0
+	_scenario_bar.alignment = BoxContainer.ALIGNMENT_END
+	_scenario_bar.add_theme_constant_override("separation", 8)
+	_scenario_bar.visible = false
+	add_child(_scenario_bar)
+	_scenario_bar.add_child(_make_action_button("Cambiar", "switch_character"))
+	_scenario_bar.add_child(_make_action_button("Espectador", "spectate"))
+	_scenario_bar.add_child(_make_action_button("Reiniciar", "reset_scenario"))
+	clear_state()
+
+
+func _exit_tree() -> void:
+	clear_state()
+
+
+## Botones Cambiar / Espectador / Reiniciar (solo en escenarios de prueba).
+func set_scenario_buttons(enabled: bool) -> void:
+	_scenario_bar.visible = enabled
+
+
+func set_controls_enabled(enabled: bool) -> void:
+	if enabled == controls_enabled:
+		return
+	controls_enabled = enabled
+	if not enabled:
+		_release_all()
+
+
+func _process(_delta: float) -> void:
+	if not is_visible_in_tree() and (_joy_index >= 0 or _fire_index >= 0 or _action_index >= 0):
+		_release_all()
+	queue_redraw()
+
+
+# --- Entrada -----------------------------------------------------------------------
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not is_visible_in_tree() or not controls_enabled:
+		return
+	event = make_input_local(event)
+	if event is InputEventScreenTouch:
+		_on_touch(event.index, event.position, event.pressed)
+	elif event is InputEventScreenDrag:
+		_on_drag(event.index, event.position)
+	elif not GameManager.is_mobile() and event.device != InputEvent.DEVICE_ID_EMULATION:
+		# Pruebas en PC: el ratón hace de dedo (ignorando los clics emulados desde toques reales).
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			_mouse_down = event.pressed
+			_on_touch(MOUSE_INDEX, event.position, event.pressed)
+		elif event is InputEventMouseMotion and _mouse_down:
+			_on_drag(MOUSE_INDEX, event.position)
+
+
+func _on_touch(index: int, pos: Vector2, pressed: bool) -> void:
+	if not pressed:
+		if index == _joy_index:
+			_joy_index = -1
+			move = Vector2.ZERO
+		elif index == _fire_index:
+			_fire_index = -1
+		elif index == _action_index:
+			_action_index = -1
+			interact_held = false
+		return
+
+	if show_fire and _fire_index < 0 and pos.distance_to(_fire_center()) <= FIRE_RADIUS * _scale() * HIT_SLOP:
+		_fire_index = index
+		_fire_queued = true
+		get_viewport().set_input_as_handled()
+	elif action_text != "" and _action_index < 0 and pos.distance_to(_action_center()) <= ACTION_RADIUS * _scale() * HIT_SLOP:
+		_action_index = index
+		_interact_queued = true
+		interact_held = true
+		get_viewport().set_input_as_handled()
+	elif _joy_index < 0 and _in_joystick_zone(pos):
+		_joy_index = index
+		_joy_center = pos
+		move = Vector2.ZERO
+		get_viewport().set_input_as_handled()
+
+
+func _on_drag(index: int, pos: Vector2) -> void:
+	if index != _joy_index:
+		return
+	var radius := BASE_RADIUS * _scale()
+	var offset := pos - _joy_center
+	if offset.length() > radius:
+		# La base sigue al dedo: no hace falta volver al centro para cambiar de dirección.
+		_joy_center = pos - offset.normalized() * radius
+		offset = pos - _joy_center
+	var value := offset / radius
+	move = Vector2.ZERO if value.length() < DEAD_ZONE else value.limit_length(1.0)
+	get_viewport().set_input_as_handled()
+
+
+func _release_all() -> void:
+	_joy_index = -1
+	_fire_index = -1
+	_action_index = -1
+	_mouse_down = false
+	clear_state()
+
+
+# --- Geometría ---------------------------------------------------------------------
+
+func _scale() -> float:
+	return GameManager.config.touch_ui_scale
+
+
+func _in_joystick_zone(pos: Vector2) -> bool:
+	return pos.x < size.x * 0.5 and pos.y > size.y * 0.2
+
+
+func _joy_rest_center() -> Vector2:
+	var margin := (BASE_RADIUS + 50.0) * _scale()
+	return Vector2(margin, size.y - margin)
+
+
+func _fire_center() -> Vector2:
+	var margin := (FIRE_RADIUS + 40.0) * _scale()
+	return Vector2(size.x - margin, size.y - margin)
+
+
+func _action_center() -> Vector2:
+	if not show_fire:
+		return _fire_center()
+	var s := _scale()
+	return _fire_center() + Vector2(-(FIRE_RADIUS + ACTION_RADIUS + 30.0) * s, -40.0 * s)
+
+
+# --- Dibujo ------------------------------------------------------------------------
+
+func _draw() -> void:
+	if not controls_enabled:
+		return
+	var s := _scale()
+	var font := get_theme_default_font()
+
+	# Joystick
+	var base := _joy_center if _joy_index >= 0 else _joy_rest_center()
+	var radius := BASE_RADIUS * s
+	var sneaking := move != Vector2.ZERO and move.length() < GameManager.config.touch_sneak_threshold
+	draw_circle(base, radius, COLOR_BASE)
+	draw_arc(base, radius, 0.0, TAU, 48, COLOR_SNEAK if sneaking else COLOR_RING, 3.0 * s, true)
+	# Marca del límite de sigilo.
+	draw_arc(base, radius * GameManager.config.touch_sneak_threshold, 0.0, TAU, 40, Color(1, 1, 1, 0.12), 1.5 * s, true)
+	draw_circle(base + move * radius, KNOB_RADIUS * s, COLOR_SNEAK if sneaking else COLOR_PRESSED)
+	if _joy_index >= 0:
+		_draw_text(font, base + Vector2(0, -radius - 14.0 * s), "SIGILO" if sneaking else ("CORRER" if move != Vector2.ZERO else ""), 16, s)
+
+	# Botón RED
+	if show_fire:
+		var center := _fire_center()
+		var r := FIRE_RADIUS * s
+		var net_ready := fire_ready >= 1.0
+		draw_circle(center, r, (COLOR_PRESSED if _fire_index >= 0 else COLOR_FIRE) if net_ready else COLOR_FIRE_OFF)
+		draw_arc(center, r, 0.0, TAU, 48, COLOR_RING, 3.0 * s, true)
+		if not net_ready:
+			draw_arc(center, r + 6.0 * s, -PI / 2.0, -PI / 2.0 + TAU * fire_ready, 48, COLOR_PROGRESS, 5.0 * s, true)
+		_draw_text(font, center + Vector2(0, 8.0 * s), "RED", 26, s)
+
+	# Botón de acción
+	if action_text != "":
+		var center := _action_center()
+		var r := ACTION_RADIUS * s
+		draw_circle(center, r, COLOR_PRESSED if _action_index >= 0 else COLOR_ACTION)
+		draw_arc(center, r, 0.0, TAU, 48, COLOR_RING, 3.0 * s, true)
+		if action_progress >= 0.0:
+			draw_arc(center, r + 6.0 * s, -PI / 2.0, -PI / 2.0 + TAU * clampf(action_progress, 0.0, 1.0), 48, COLOR_PROGRESS, 5.0 * s, true)
+		var font_size := 18 if action_text.length() <= 8 else 14
+		_draw_text(font, center + Vector2(0, 6.0 * s), action_text, font_size, s)
+		if action_hold:
+			_draw_text(font, center + Vector2(0, 26.0 * s), "mantén", 12, s)
+
+
+func _draw_text(font: Font, pos: Vector2, text: String, font_size: int, s: float) -> void:
+	if text == "":
+		return
+	var px := int(font_size * s)
+	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+	var at := pos - Vector2(width / 2.0, 0)
+	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(4 * s), Color.BLACK)
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color.WHITE)
+
+
+func _make_action_button(text: String, action: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(118, 46)
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 16)
+	button.pressed.connect(func() -> void:
+		for pressed in [true, false]:
+			var ev := InputEventAction.new()
+			ev.action = action
+			ev.pressed = pressed
+			Input.parse_input_event(ev))
+	return button

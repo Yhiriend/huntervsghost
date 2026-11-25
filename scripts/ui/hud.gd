@@ -15,6 +15,10 @@ var _prompt_label: Label
 var _capture_bar: ProgressBar
 var _message_label: Label
 var _message_time_left: float = 0.0
+## Joystick y botones táctiles (visibles en el móvil o con touch_controls_on_pc).
+var touch: TouchControls
+## Muestra en táctil los botones Cambiar / Espectador / Reiniciar.
+var scenario_buttons: bool = false
 
 
 func _ready() -> void:
@@ -45,6 +49,12 @@ func show_message(text: String, duration: float = 2.0) -> void:
 
 func _process(delta: float) -> void:
 	_update_ghost_count()
+	touch.visible = GameManager.is_touch_mode()
+	touch.set_scenario_buttons(scenario_buttons)
+	touch.show_fire = false
+	touch.action_text = ""
+	touch.action_progress = -1.0
+	touch.set_controls_enabled(_controlled != null and not _controlled.frozen and _controlled.is_active())
 	_update_status()
 	_message_time_left = maxf(0.0, _message_time_left - delta)
 	_message_label.modulate.a = clampf(_message_time_left / MESSAGE_FADE_TIME, 0.0, 1.0)
@@ -71,11 +81,13 @@ func _update_status() -> void:
 	if _controlled is Hunter:
 		var hunter := _controlled as Hunter
 		_status_label.text = "Red: LISTA" if hunter.is_net_ready() else "Red: %.1f s" % hunter.net_cooldown_left
+		touch.show_fire = true
+		touch.fire_ready = 1.0 - hunter.net_cooldown_left / maxf(GameManager.config.net_cooldown, 0.001)
 		if hunter.capture_target:
-			_show_progress("CAPTURANDO...", hunter.capture_progress / GameManager.config.capture_time)
+			_show_progress("CAPTURANDO...", hunter.capture_progress / GameManager.config.capture_time, "CAPTURAR")
 			return
 		if hunter.interact_target == null and hunter.find_capturable_ghost():
-			_prompt_label.text = "Mantén [E] · CAPTURAR"
+			_show_prompt("CAPTURAR", true)
 			return
 	elif _controlled is Ghost:
 		var ghost := _controlled as Ghost
@@ -97,19 +109,30 @@ func _update_interaction_prompt() -> void:
 	var target := _controlled.interact_target
 	if target:
 		var hold := target.get_hold_time(_controlled)
-		_show_progress("%s..." % target.get_prompt(_controlled), _controlled.interact_progress / maxf(hold, 0.001))
+		var prompt := target.get_prompt(_controlled)
+		_show_progress("%s..." % prompt, _controlled.interact_progress / maxf(hold, 0.001), prompt)
 		return
 	var item := _controlled.find_interactable()
 	if item == null:
 		return
-	var prompt := item.get_prompt(_controlled)
-	_prompt_label.text = ("Mantén [E] · %s" if item.get_hold_time(_controlled) > 0.0 else "[E] %s") % prompt
+	_show_prompt(item.get_prompt(_controlled), item.get_hold_time(_controlled) > 0.0)
 
 
-func _show_progress(text: String, progress: float) -> void:
+## Acción disponible: texto con la tecla en PC; en táctil, el texto va en el botón.
+func _show_prompt(action: String, hold: bool) -> void:
+	touch.action_text = action
+	touch.action_hold = hold
+	if not touch.visible:
+		_prompt_label.text = ("Mantén [E] · %s" if hold else "[E] %s") % action
+
+
+func _show_progress(text: String, progress: float, action: String) -> void:
 	_prompt_label.text = text
 	_capture_bar.visible = true
 	_capture_bar.value = clampf(progress, 0.0, 1.0)
+	touch.action_text = action
+	touch.action_hold = true
+	touch.action_progress = clampf(progress, 0.0, 1.0)
 
 
 # --- Construcción --------------------------------------------------------------
@@ -171,6 +194,12 @@ func _build_ui() -> void:
 	_capture_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_capture_bar.visible = false
 	bottom.add_child(_capture_bar)
+
+	touch = TouchControls.new()
+	touch.name = "TouchControls"
+	touch.set_anchors_preset(Control.PRESET_FULL_RECT)
+	touch.visible = false
+	root.add_child(touch)
 
 
 func _make_label(font_size: int) -> Label:

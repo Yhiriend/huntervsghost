@@ -48,6 +48,7 @@ func _ready() -> void:
 	_player_input.name = "PlayerInput"
 	add_child(_player_input)
 	_hud.name = "HUD"
+	_hud.scenario_buttons = allow_switch
 	add_child(_hud)
 
 	var start_index := 0
@@ -261,7 +262,8 @@ func _spawn_noise_ring(at: Vector3, color: Color, size: float) -> void:
 
 # --- Mensajes --------------------------------------------------------------------
 
-func _on_ghost_state_changed(_ghost: Ghost, old_state: Ghost.State, new_state: Ghost.State) -> void:
+func _on_ghost_state_changed(ghost: Ghost, old_state: Ghost.State, new_state: Ghost.State) -> void:
+	_vibrate_for(ghost, new_state)
 	match new_state:
 		Ghost.State.NETTED:
 			_hud.show_message("¡Red! Ghost inmovilizado")
@@ -273,6 +275,19 @@ func _on_ghost_state_changed(_ghost: Ghost, old_state: Ghost.State, new_state: G
 		Ghost.State.FREE:
 			if old_state == Ghost.State.NETTED:
 				_hud.show_message("El Ghost se ha liberado")
+
+
+## Vibración en el móvil: fuerte si te atrapan, corta si aciertas o capturas.
+func _vibrate_for(ghost: Ghost, new_state: Ghost.State) -> void:
+	if not GameManager.is_mobile():
+		return
+	var controlled := get_controlled_character()
+	if controlled == null:
+		return
+	if controlled == ghost and (new_state == Ghost.State.NETTED or new_state == Ghost.State.CAPTURED):
+		Input.vibrate_handheld(350)
+	elif controlled is Hunter and (new_state == Ghost.State.NETTED or new_state == Ghost.State.CAPTURED):
+		Input.vibrate_handheld(80)
 
 
 func _on_hiding_spot_searched(_spot: HidingSpot, found: Ghost) -> void:

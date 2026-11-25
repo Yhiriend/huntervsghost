@@ -206,10 +206,22 @@ Protocolo (lo hace el jugador):
 
 ### Fase 7 — Móvil · ~3 jornadas
 *(Hito 6 del GDD)*
-- [ ] Joystick virtual + botón principal + botón contextual (con el texto de la acción).
-- [ ] Apuntado móvil: auto-apuntado suave hacia el Ghost visible más cercano.
-- [ ] Ajustar cámara y zoom para pantalla de teléfono.
-- [ ] Exportar a Android, probar en dispositivo real y perfilar FPS con varias luces.
+- [x] Joystick virtual + botón principal + botón contextual (con el texto de la acción).
+  - Joystick flotante en la mitad izquierda: poco inclinado = sigilo, a tope = correr.
+  - Botón RED (solo Hunter) con la recarga dibujada; botón verde de acción con el texto (ABRIR, ESCONDERSE, CAPTURAR…) y el progreso al mantener.
+  - Multitáctil: se puede mover y disparar a la vez. Vibración al atrapar/capturar o al ser atrapado.
+  - Barra superior: Menú · Ajustes (panel F1) · Conos. En escenarios de prueba: Cambiar · Espectador · Reiniciar. El botón Atrás de Android vuelve al menú.
+- [x] Apuntado móvil: auto-apuntado hacia el Ghost visible más conveniente (cerca y hacia donde vas/miras), con anticipación. Ajustable en F1 → Móvil.
+- [x] Ajustar cámara y zoom para pantalla de teléfono (`camera_zoom_touch` = 14, horizontal con sensor).
+- [x] Preset de exportación Android (`export_presets.cfg`, arm64, APK de depuración) y contador de draw calls junto a los FPS.
+- [ ] Probar en dispositivo real y perfilar FPS con varias luces (necesita las plantillas de exportación, ver abajo).
+
+**Probar en PC sin móvil:** F1 → Móvil → `touch controls on pc` (el ratón hace de dedo; WASD sigue funcionando).
+
+**Probar en Android:**
+1. Editor → *Editor › Gestionar plantillas de exportación* → *Descargar e instalar* (4.7.2). SDK, Java y keystore de depuración ya están configurados.
+2. En el teléfono: *Opciones de desarrollador* → *Depuración USB*, y conectarlo por cable (`adb devices` debe listarlo).
+3. Editor → icono de Android arriba a la derecha (*Despliegue remoto*), o *Proyecto › Exportar… › Android › Exportar proyecto* → `build/android/ghost-hunter.apk`.
 
 **Puerta 7:** ¿Sigue siendo divertido con controles táctiles?
 

@@ -48,6 +48,21 @@ var debug_vision: bool = true:
 		debug_vision_toggled.emit(value)
 
 
+func _ready() -> void:
+	if is_mobile():
+		config.camera_zoom = config.camera_zoom_touch
+
+
+## Se ejecuta en un teléfono o tablet.
+func is_mobile() -> bool:
+	return OS.has_feature("mobile")
+
+
+## Controles táctiles activos: en el móvil siempre; en PC si se activa en ajustes (F1).
+func is_touch_mode() -> bool:
+	return is_mobile() or config.touch_controls_on_pc
+
+
 func _load_config() -> GameConfig:
 	if ResourceLoader.exists(CONFIG_PATH):
 		var loaded := load(CONFIG_PATH) as GameConfig

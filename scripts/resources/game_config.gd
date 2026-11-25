@@ -100,3 +100,21 @@ extends Resource
 @export_range(6.0, 30.0, 0.5) var camera_zoom_min: float = 8.0
 @export_range(6.0, 40.0, 0.5) var camera_zoom_max: float = 26.0
 @export_range(0.25, 5.0, 0.25) var camera_zoom_step: float = 1.0
+
+@export_group("Móvil")
+## Muestra los controles táctiles también en PC (se manejan con el ratón, para probarlos sin móvil).
+@export var touch_controls_on_pc: bool = false
+## Inclinar el joystick menos que esto (0-1) = caminar en sigilo; más = correr.
+@export_range(0.2, 0.9, 0.05) var touch_sneak_threshold: float = 0.55
+## Auto-apuntado: el Hunter apunta solo al Ghost visible más cercano.
+@export var touch_auto_aim: bool = true
+## Distancia máxima (m) a la que el auto-apuntado elige un Ghost.
+@export_range(3.0, 15.0, 0.5) var touch_aim_range: float = 8.0
+## Ángulo máximo (grados) entre hacia dónde vas/miras y el Ghost para fijarlo.
+@export_range(20.0, 180.0, 5.0) var touch_aim_max_angle: float = 70.0
+## Cuánto anticipa el auto-apuntado el movimiento del Ghost (0 = donde está, 1 = predicción perfecta).
+@export_range(0.0, 1.0, 0.05) var touch_aim_lead: float = 0.5
+## Zoom de la cámara al arrancar en el móvil (pantalla más pequeña: se ve más cerca).
+@export_range(6.0, 30.0, 0.5) var camera_zoom_touch: float = 14.0
+## Tamaño de los controles táctiles (1 = normal).
+@export_range(0.6, 1.6, 0.05) var touch_ui_scale: float = 1.0
