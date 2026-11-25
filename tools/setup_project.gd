@@ -9,8 +9,9 @@ func _init() -> void:
 	_setup_input_map()
 	ProjectSettings.set_setting("autoload/GameManager", "*res://scripts/autoload/game_manager.gd")
 	ProjectSettings.set_setting("autoload/DebugOverlay", "*res://scripts/ui/debug_overlay.gd")
+	ProjectSettings.set_setting("autoload/Audio", "*res://scripts/autoload/audio_manager.gd")
 	ProjectSettings.set_setting("application/run/main_scene", "res://scenes/main/MainMenu.tscn")
-	ProjectSettings.set_setting("application/config/name", "Ghost-Hunter")
+	ProjectSettings.set_setting("application/config/name", "Cazador o Presa")
 	ProjectSettings.set_setting("layer_names/3d_physics/layer_1", "world")
 	ProjectSettings.set_setting("layer_names/3d_physics/layer_2", "characters")
 	# Móvil: horizontal (gira con el sensor) y el botón Atrás lo gestiona el juego.

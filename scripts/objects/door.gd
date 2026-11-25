@@ -58,6 +58,7 @@ func set_open(value: bool, actor: CharacterBase = null, animate: bool = true) ->
 		_panel.position = target
 	if animate and changed:
 		GameManager.make_noise(global_position, GameManager.config.door_noise_radius, actor)
+		Audio.play_at("door_open" if is_open else "door_close", global_position, GameManager.config.door_noise_radius)
 	if changed:
 		open_changed.emit(self, is_open)
 	return true

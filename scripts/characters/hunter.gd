@@ -121,6 +121,7 @@ func fire_net() -> void:
 	var net := NetProjectile.new()
 	get_parent().add_child(net)
 	net.launch(self, dir)
+	Audio.play_at("net_fire", global_position, 10.0)
 	net_cooldown_left = GameManager.config.net_cooldown
 	net_fired.emit(self)
 

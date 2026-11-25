@@ -12,6 +12,12 @@ var target: Node3D
 
 
 func _ready() -> void:
+	# El oyente va a la altura del personaje seguido (no en la cámara, que está a 20 m).
+	var listener := AudioListener3D.new()
+	listener.name = "AudioListener"
+	listener.position = Vector3(0.0, 1.0, 0.0)
+	add_child(listener)
+	listener.make_current()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = GameManager.config.camera_zoom
 	_update_camera_offset()

@@ -58,6 +58,7 @@ func interact(actor: CharacterBase) -> void:
 			ghost.enter_hiding(self)
 	elif actor is Hunter:
 		var found := occupant
+		Audio.play_at("wardrobe_found" if found else "wardrobe_search", global_position, GameManager.config.wardrobe_noise_radius + 2.0)
 		if found:
 			found.expel_from_hiding()
 		searched.emit(self, found)
@@ -74,6 +75,8 @@ func _physics_process(delta: float) -> void:
 	if shaking:
 		# Dos golpes cortos cada segundo, como un latido.
 		var beat := fmod(_time, 1.0)
+		if beat < delta:
+			Audio.play_at("heartbeat", global_position, GameManager.config.heartbeat_distance + 1.5, -2.0, false)
 		var strength := 0.04 if beat < 0.1 or (beat > 0.2 and beat < 0.3) else 0.0
 		_visual.position = Vector3(randf_range(-strength, strength), 0.0, randf_range(-strength, strength))
 	else:

@@ -68,7 +68,7 @@ static func build_report(rows: Array[Dictionary]) -> String:
 		else:
 			finished.append(row)
 	if finished.is_empty():
-		return "Todavía no hay partidas terminadas.\n\nJuega desde el menú (Hunter y Ghost) y responde al cuestionario del final: aquí aparecerán las señales para saber si el juego es divertido."
+		return "Todavía no hay partidas terminadas.\n\nJuega desde el menú (Cazador y Presa) y responde al cuestionario del final: aquí aparecerán las señales para saber si el juego es divertido."
 
 	var out := PackedStringArray()
 	out.append("Partidas terminadas: [b]%d[/b] · abandonadas: %d" % [finished.size(), abandoned])
@@ -90,7 +90,7 @@ static func build_report(rows: Array[Dictionary]) -> String:
 	# --- Por bando ---
 	for role in ["hunter", "ghost"]:
 		var games := finished.filter(func(r): return r.get("rol_jugador") == role)
-		out.append("[b]JUGANDO COMO %s[/b]  (%d partidas)" % [role.to_upper(), games.size()])
+		out.append("[b]JUGANDO COMO %s[/b]  (%d partidas)" % ["CAZADOR" if role == "hunter" else "PRESA", games.size()])
 		if games.is_empty():
 			out.append("  [color=%s]Sin partidas.[/color]" % NONE)
 			out.append("")

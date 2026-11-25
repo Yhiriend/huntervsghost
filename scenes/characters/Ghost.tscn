@@ -30,7 +30,7 @@ size = Vector3(0.45, 0.12, 0.2)
 collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_ghost")
-display_name = "GHOST"
+display_name = "PRESA"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
@@ -51,4 +51,4 @@ billboard = 1
 no_depth_test = true
 font_size = 40
 outline_size = 12
-text = "GHOST"
+text = "PRESA"

@@ -96,11 +96,13 @@ func enter_hiding(spot: HidingSpot, make_sound: bool = true) -> void:
 	_set_state(State.HIDDEN)
 	if make_sound:
 		GameManager.make_noise(spot.global_position, GameManager.config.wardrobe_noise_radius, self)
+		Audio.play_at("wardrobe_enter", spot.global_position, GameManager.config.wardrobe_noise_radius)
 
 
 func exit_hiding() -> void:
 	if _leave_spot():
 		GameManager.make_noise(global_position, GameManager.config.wardrobe_noise_radius, self)
+		Audio.play_at("wardrobe_exit", global_position, GameManager.config.wardrobe_noise_radius)
 
 
 ## Un Hunter ha registrado el armario: sale y no puede volver a esconderse durante un rato.
@@ -168,7 +170,16 @@ func _set_state(new_state: State) -> void:
 	_collision.set_deferred("disabled", state == State.CAPTURED or state == State.HIDDEN)
 	_update_visibility()
 	if old_state != new_state:
+		_play_state_sound(old_state, new_state)
 		state_changed.emit(self, old_state, new_state)
+
+
+## Capturado y liberarse de la red se oyen lejos (son momentos clave de la partida).
+func _play_state_sound(old_state: State, new_state: State) -> void:
+	if new_state == State.CAPTURED:
+		Audio.play_at("capture", global_position, 14.0)
+	elif old_state == State.NETTED and new_state == State.FREE:
+		Audio.play_at("net_escape", global_position, 12.0)
 
 
 func _update_visibility() -> void:

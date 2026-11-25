@@ -21,7 +21,7 @@ point_count = 2
 
 [node name="TestHunter" type="Node3D"]
 script = ExtResource("1_scenario")
-description = "TEST HUNTER: 5 Ghosts. Armario de la sala, cocina iluminada, tras la puerta cerrada, esquina del dormitorio a oscuras y uno corriendo por el pasillo."
+description = "TEST CAZADOR: 5 Presas. Armario de la sala, cocina iluminada, tras la puerta cerrada, esquina del dormitorio a oscuras y uno corriendo por el pasillo."
 rooms_dark = PackedStringArray("Dormitorio")
 doors_closed = PackedStringArray("DoorCocinaPasillo")
 

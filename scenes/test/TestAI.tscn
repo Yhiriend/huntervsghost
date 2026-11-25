@@ -14,7 +14,7 @@ ambient_light_energy = 0.55
 
 [node name="TestAI" type="Node3D"]
 script = ExtResource("1_scenario")
-description = "TEST IA: 1 Hunter IA contra 2 Ghosts IA. Modo espectador: Tab cambia de cámara, P para tomar el control. F2 muestra el estado de cada IA."
+description = "TEST IA: 1 Cazador IA contra 2 Presas IA. Modo espectador: Tab cambia de cámara, P para tomar el control. F2 muestra el estado de cada IA."
 rooms_dark = PackedStringArray()
 doors_closed = PackedStringArray()
 start_spectating = true

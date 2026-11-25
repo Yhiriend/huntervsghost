@@ -66,7 +66,7 @@ func _update_ghost_count() -> void:
 	for node in ghosts:
 		if (node as Ghost).state != Ghost.State.CAPTURED:
 			free_count += 1
-	_ghosts_label.text = "Ghosts libres: %d / %d" % [free_count, ghosts.size()]
+	_ghosts_label.text = "Presas libres: %d / %d" % [free_count, ghosts.size()]
 
 
 func _update_status() -> void:

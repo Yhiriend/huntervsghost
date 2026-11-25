@@ -35,6 +35,7 @@ func get_prompt(_actor: CharacterBase) -> String:
 func interact(actor: CharacterBase) -> void:
 	room.toggle()
 	GameManager.make_noise(global_position, GameManager.config.switch_noise_radius, actor)
+	Audio.play_at("switch", global_position, maxf(GameManager.config.switch_noise_radius, 3.0))
 
 
 func _update_visual() -> void:

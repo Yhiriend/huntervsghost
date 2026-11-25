@@ -95,6 +95,7 @@ func _segment_hit_fraction(from: Vector3, to: Vector3, ghost: Ghost, net_radius:
 func _finish(at: Vector3, hit_ghost: bool) -> void:
 	_finished = true
 	global_position = at
+	Audio.play_at("net_hit" if hit_ghost else "net_miss", at, 10.0 if hit_ghost else 6.0)
 	var tween := create_tween()
 	if hit_ghost:
 		tween.tween_property(self, "scale", Vector3.ONE * 4.0, 0.12)

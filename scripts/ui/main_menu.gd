@@ -3,8 +3,8 @@ extends Control
 
 const TEST_SCENES := [
 	["Prototype01 · casa libre", "res://scenes/test/Prototype01.tscn"],
-	["TestHunter · 5 Ghosts maniquí", "res://scenes/test/TestHunter.tscn"],
-	["TestGhost · Hunters que patrullan", "res://scenes/test/TestGhost.tscn"],
+	["TestCazador · 5 Presas maniquí", "res://scenes/test/TestHunter.tscn"],
+	["TestPresa · Cazadores que patrullan", "res://scenes/test/TestGhost.tscn"],
 	["TestAI · IA contra IA (espectador)", "res://scenes/test/TestAI.tscn"],
 ]
 
@@ -19,29 +19,46 @@ func _ready() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
-	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(420, 0)
-	box.add_theme_constant_override("separation", 10)
-	center.add_child(box)
+	# Dos columnas para que quepa en un móvil en horizontal: jugar | escenarios de prueba.
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", 6)
+	center.add_child(page)
+	page.add_child(_label("¿CAZADOR O PRESA?", 48, Color(0.45, 0.85, 1.0)))
+	page.add_child(_label("Prototipo del MVP", 18, Color(0.7, 0.7, 0.8)))
+	page.add_child(_spacer(14))
 
-	box.add_child(_label("GHOST-HUNTER", 52, Color(0.45, 0.85, 1.0)))
-	box.add_child(_label("Prototipo del MVP", 18, Color(0.7, 0.7, 0.8)))
-	box.add_child(_spacer(16))
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 32)
+	page.add_child(columns)
+	var play := _column()
+	columns.add_child(play)
+	var tests := _column()
+	columns.add_child(tests)
 
 	var cfg := GameManager.config
-	box.add_child(_button("Jugar como HUNTER  (vs %d Ghosts)" % cfg.ghost_count, func() -> void: GameManager.start_match(DummySpawn.Role.HUNTER), Color(1.0, 0.6, 0.25)))
-	box.add_child(_button("Jugar como GHOST  (vs 1 Hunter)", func() -> void: GameManager.start_match(DummySpawn.Role.GHOST), Color(0.45, 0.85, 1.0)))
-	box.add_child(_difficulty_row())
-	box.add_child(_spacer(12))
+	play.add_child(_label("Partida", 16, Color(0.8, 0.8, 0.85)))
+	play.add_child(_button("Jugar como CAZADOR  (vs %d Presas)" % cfg.ghost_count, func() -> void: GameManager.start_match(DummySpawn.Role.HUNTER), Color(1.0, 0.6, 0.25)))
+	play.add_child(_button("Jugar como PRESA  (vs 1 Cazador)", func() -> void: GameManager.start_match(DummySpawn.Role.GHOST), Color(0.45, 0.85, 1.0)))
+	play.add_child(_difficulty_row())
+	play.add_child(_spacer(8))
+	play.add_child(_button("Resultados de las pruebas", func() -> void: get_tree().change_scene_to_file("res://scenes/main/PlaytestSummary.tscn"), Color(0.7, 1.0, 0.7)))
+	play.add_child(_button("Salir", func() -> void: get_tree().quit()))
 
-	box.add_child(_label("Escenarios de prueba (también con 1 / 2 / 3 / 4)", 16, Color(0.8, 0.8, 0.85)))
+	# Los atajos 1-4 solo existen con teclado.
+	tests.add_child(_label("Escenarios de prueba" + ("" if GameManager.is_touch_mode() else "  (teclas 1-4)"), 16, Color(0.8, 0.8, 0.85)))
 	for entry in TEST_SCENES:
 		var path: String = entry[1]
-		box.add_child(_button(entry[0], func() -> void: get_tree().change_scene_to_file(path)))
-	box.add_child(_spacer(12))
+		tests.add_child(_button(entry[0], func() -> void: get_tree().change_scene_to_file(path)))
 
-	box.add_child(_button("Resultados de las pruebas", func() -> void: get_tree().change_scene_to_file("res://scenes/main/PlaytestSummary.tscn"), Color(0.7, 1.0, 0.7)))
-	box.add_child(_button("Salir", func() -> void: get_tree().quit()))
+	page.add_child(_spacer(10))
+	page.add_child(_label("Música: \"Mystery & Crime Background Music\" — Oak Hill", 13, Color(0.55, 0.55, 0.65)))
+
+
+func _column() -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.custom_minimum_size = Vector2(400, 0)
+	column.add_theme_constant_override("separation", 10)
+	return column
 
 
 ## Dificultad de la IA rival: Fácil / Normal / Difícil.

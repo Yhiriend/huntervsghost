@@ -1,4 +1,6 @@
-# GHOST-HUNTER — Plan de trabajo del MVP
+# ¿CAZADOR O PRESA? — Plan de trabajo del MVP
+
+*(Antes "Ghost-Hunter".)*
 
 **Basado en:** `Ghost-Hunter_GDD_MVP_v0.1.md`
 **Motor:** Godot 4.7 (renderizador Mobile, Jolt Physics) · GDScript
@@ -150,7 +152,7 @@ Cada fase termina en algo **jugable** y en una **puerta de decisión**. Estimaci
 - [x] **Visión**: cono (ángulo + radio) + línea de visión para Hunter y Ghost; los Ghosts fuera de visión se ocultan al Hunter. Conos visibles por defecto (F2 para ocultarlos).
 - [x] Maniquí con comportamiento `RUTA` (recorre los puntos de un `Path3D` en bucle y abre las puertas cerradas).
 - [x] HUD básico: Ghosts restantes, recarga, progreso de captura.
-- [ ] Sonidos provisionales: pasos, disparo, impacto, captura.
+- [x] Sonidos provisionales: pasos, disparo, impacto, captura (y puertas, interruptores, armarios, latido, avisos). Generados con `tools/generate_sfx.py`; música en `audio/music/`.
 - [x] `TestHunter.tscn` con los maniquíes de habitación iluminada, pasillo con ruta y habitación oscura.
 
 **Puerta 2:** Contra maniquíes:
@@ -214,14 +216,14 @@ Protocolo (lo hace el jugador):
 - [x] Apuntado móvil: auto-apuntado hacia el Ghost visible más conveniente (cerca y hacia donde vas/miras), con anticipación. Ajustable en F1 → Móvil.
 - [x] Ajustar cámara y zoom para pantalla de teléfono (`camera_zoom_touch` = 14, horizontal con sensor).
 - [x] Preset de exportación Android (`export_presets.cfg`, arm64, APK de depuración) y contador de draw calls junto a los FPS.
-- [ ] Probar en dispositivo real y perfilar FPS con varias luces (necesita las plantillas de exportación, ver abajo).
+- [x] Instalado en un POCO F7 (Android 16): menú a 60 FPS. Pendiente: medir FPS en partida.
 
 **Probar en PC sin móvil:** F1 → Móvil → `touch controls on pc` (el ratón hace de dedo; WASD sigue funcionando).
 
 **Probar en Android:**
 1. Editor → *Editor › Gestionar plantillas de exportación* → *Descargar e instalar* (4.7.2). SDK, Java y keystore de depuración ya están configurados.
 2. En el teléfono: *Opciones de desarrollador* → *Depuración USB*, y conectarlo por cable (`adb devices` debe listarlo).
-3. Editor → icono de Android arriba a la derecha (*Despliegue remoto*), o *Proyecto › Exportar… › Android › Exportar proyecto* → `build/android/ghost-hunter.apk`.
+3. Editor → icono de Android arriba a la derecha (*Despliegue remoto*), o *Proyecto › Exportar… › Android › Exportar proyecto* → `build/android/cazador-o-presa.apk`.
 
 **Puerta 7:** ¿Sigue siendo divertido con controles táctiles?
 

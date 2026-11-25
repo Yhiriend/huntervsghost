@@ -21,7 +21,7 @@ point_count = 12
 
 [node name="TestGhost" type="Node3D"]
 script = ExtResource("1_scenario")
-description = "TEST GHOST: un Hunter vigila el pasillo y otro patrulla la casa. Ambos disparan si te ven. Usa puertas, luces, armarios y sigilo (Shift)."
+description = "TEST PRESA: un Cazador vigila el pasillo y otro patrulla la casa. Ambos disparan si te ven. Usa puertas, luces, armarios y sigilo (Shift)."
 rooms_dark = PackedStringArray()
 doors_closed = PackedStringArray()
 

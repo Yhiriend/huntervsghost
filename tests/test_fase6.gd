@@ -108,7 +108,7 @@ func run() -> void:
 	check(report.contains("Victorias del jugador: [b]50 %[/b]"), "Resumen: 50 % de victorias como Hunter")
 	check(report.contains("Precisión de red (tu precisión): [b]30 %[/b]"), "Resumen: precisión 30 %")
 	check(report.contains("Partidas en que se usan luces: [b]0 %[/b]"), "Resumen: luces sin usar (señal amarilla)")
-	check(report.contains("JUGANDO COMO GHOST[/b]  (0 partidas)"), "Resumen: bando sin partidas")
+	check(report.contains("JUGANDO COMO PRESA[/b]  (0 partidas)"), "Resumen: bando sin partidas")
 	check(report.contains("nota 5"), "Resumen: últimas notas")
 	var empty: String = (load("res://scripts/ui/playtest_summary.gd") as GDScript).build_report([] as Array[Dictionary])
 	check(empty.begins_with("Todavía no hay partidas"), "Resumen vacío con instrucciones")

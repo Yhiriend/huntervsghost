@@ -38,6 +38,10 @@ var _controlled: int = -1
 var _watched: int = -1
 var _player_input := PlayerInput.new()
 var _hud := HUD.new()
+## Segundos hasta el próximo latido del pulso de la Presa.
+var _pulse_left: float = 0.0
+## Hay latido ahora mismo (para las pruebas y el HUD).
+var pulse_active: bool = false
 
 @onready var _camera_rig: CameraRig = $CameraRig
 @onready var _spawns: Node3D = $Spawns
@@ -76,8 +80,9 @@ func _ready() -> void:
 		_hud.show_message(description, 6.0)
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	_update_player_visibility()
+	_update_prey_pulse(delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -229,6 +234,48 @@ func ghost_can_see_hunter(ghost: Ghost, hunter: Hunter) -> bool:
 	return room != null and room == _area_of(hunter)
 
 
+## Pulso de la Presa: solo lo oye el jugador cuando es la Presa y el Cazador está en su misma
+## habitación (también si está escondida en el armario). Más cerca = más rápido y más fuerte.
+const PULSE_SLOW := 0.95
+const PULSE_FAST := 0.42
+## A esta distancia (m) o menos el pulso va al máximo.
+const PULSE_CLOSE := 2.0
+const PULSE_FAR := 9.0
+
+
+func _update_prey_pulse(delta: float) -> void:
+	var prey := get_controlled_character() as Ghost
+	var distance := _hunter_distance_in_room(prey) if prey and GameManager.config.prey_pulse_enabled else -1.0
+	pulse_active = distance >= 0.0
+	if not pulse_active:
+		_pulse_left = 0.0
+		return
+	var closeness := clampf(inverse_lerp(PULSE_FAR, PULSE_CLOSE, distance), 0.0, 1.0)
+	_pulse_left -= delta
+	if _pulse_left <= 0.0:
+		_pulse_left = lerpf(PULSE_SLOW, PULSE_FAST, closeness)
+		Audio.play("pulse", lerpf(-3.0, 4.0, closeness))
+		if GameManager.is_mobile():
+			Input.vibrate_handheld(int(lerpf(25.0, 70.0, closeness)), lerpf(0.3, 0.8, closeness))
+
+
+## Distancia al Cazador más cercano que comparte habitación con la Presa (-1 si ninguno).
+func _hunter_distance_in_room(prey: Ghost) -> float:
+	if prey.state == Ghost.State.CAPTURED:
+		return -1.0
+	var room := _area_of(prey)
+	if room == null:
+		return -1.0
+	var best := -1.0
+	for node in get_tree().get_nodes_in_group("hunters"):
+		var hunter := node as Hunter
+		if _area_of(hunter) == room:
+			var d := AIController.flat_distance(prey.global_position, hunter.global_position)
+			if best < 0.0 or d < best:
+				best = d
+	return best
+
+
 ## Habitación en la que está un personaje. En un umbral de puerta (fuera de toda habitación)
 ## cuenta la última en la que estuvo, para que no parpadee al cruzar.
 func _area_of(character: CharacterBase) -> Room:
@@ -298,15 +345,15 @@ func _on_ghost_state_changed(ghost: Ghost, old_state: Ghost.State, new_state: Gh
 	_vibrate_for(ghost, new_state)
 	match new_state:
 		Ghost.State.NETTED:
-			_hud.show_message("¡Red! Ghost inmovilizado")
+			_hud.show_message("¡Red! Presa inmovilizada")
 		Ghost.State.CAPTURED:
 			if _count_free_ghosts() == 0:
-				_hud.show_message("¡Todos capturados!  (R para reiniciar)", 4.0)
+				_hud.show_message("¡Todas las Presas capturadas!  (R para reiniciar)", 4.0)
 			else:
-				_hud.show_message("¡Ghost capturado!")
+				_hud.show_message("¡Presa capturada!")
 		Ghost.State.FREE:
 			if old_state == Ghost.State.NETTED:
-				_hud.show_message("El Ghost se ha liberado")
+				_hud.show_message("La Presa se ha liberado")
 
 
 ## Vibración en el móvil: fuerte si te atrapan, corta si aciertas o capturas.
@@ -323,7 +370,7 @@ func _vibrate_for(ghost: Ghost, new_state: Ghost.State) -> void:
 
 
 func _on_hiding_spot_searched(_spot: HidingSpot, found: Ghost) -> void:
-	_hud.show_message("¡Ghost encontrado en el armario!" if found else "Armario vacío")
+	_hud.show_message("¡Presa encontrada en el armario!" if found else "Armario vacío")
 
 
 func _count_free_ghosts() -> int:

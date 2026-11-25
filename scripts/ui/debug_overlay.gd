@@ -6,7 +6,7 @@ extends CanvasLayer
 ##   Esc -> volver al menú principal.
 ## El panel se genera solo a partir de las variables @export_range de GameConfig.
 
-const TOUCH_HELP_TEXT := "Joystick: mover (poco inclinado = sigilo) · RED: disparar (apunta sola al Ghost visible) · Botón verde: usar (mantener: capturar/registrar)"
+const TOUCH_HELP_TEXT := "Joystick: mover (poco inclinado = sigilo) · RED: disparar (apunta sola a la Presa visible) · Botón verde: usar (mantener: capturar/registrar)"
 const HELP_TEXT := "WASD mover · Ratón apuntar · Clic red · E usar (mantener: capturar/registrar) · Shift sigilo · Tab cambiar · R reiniciar · F1 ajustes · P espectador · F2 conos · 1-4 escenario · Esc menú"
 ## Pantallas sin ayuda de controles.
 const NO_HELP_SCENES := ["res://scenes/main/MainMenu.tscn", "res://scenes/main/PlaytestSummary.tscn"]

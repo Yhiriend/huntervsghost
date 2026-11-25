@@ -104,6 +104,15 @@ extends Resource
 @export_range(6.0, 40.0, 0.5) var camera_zoom_max: float = 26.0
 @export_range(0.25, 5.0, 0.25) var camera_zoom_step: float = 1.0
 
+@export_group("Audio")
+@export var audio_enabled: bool = true
+## Volumen de la música de fondo (0-1).
+@export_range(0.0, 1.0, 0.05) var music_volume: float = 0.45
+## Volumen de los efectos (0-1).
+@export_range(0.0, 1.0, 0.05) var sfx_volume: float = 0.9
+## Jugando como Presa: late el corazón cuando el Cazador está en tu habitación (más rápido cuanto más cerca).
+@export var prey_pulse_enabled: bool = true
+
 @export_group("Móvil")
 ## Muestra los controles táctiles también en PC (se manejan con el ratón, para probarlos sin móvil).
 @export var touch_controls_on_pc: bool = false

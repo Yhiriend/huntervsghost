@@ -215,6 +215,7 @@ func _update_footsteps(delta: float, current_speed: float, max_speed: float) -> 
 	if _footstep_timer <= 0.0:
 		_footstep_timer = cfg.footstep_interval
 		GameManager.make_noise(global_position, cfg.run_noise_radius, self)
+		Audio.play_random_at("step", 4, global_position, cfg.run_noise_radius, -4.0)
 
 
 func _update_label() -> void:

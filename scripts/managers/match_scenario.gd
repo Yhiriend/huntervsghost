@@ -38,6 +38,8 @@ var _logged: bool = false
 var _result_screen: ResultScreen
 var _ghost_candidates: Array = []
 
+var _last_beep: int = -1
+
 @onready var _points: Node3D = $Points
 @onready var _route: Path3D = $Routes/RutaPatrulla
 
@@ -95,12 +97,12 @@ func _exit_tree() -> void:
 func _build_spawns() -> void:
 	var hunter_start: Marker3D = _points.get_node("HunterStart")
 	if player_role == ROLE_HUNTER:
-		_add_spawn("Hunter", ROLE_HUNTER, hunter_start.global_transform, {"player_start": true})
+		_add_spawn("Cazador", ROLE_HUNTER, hunter_start.global_transform, {"player_start": true})
 		for i in GameManager.config.ghost_count:
 			_add_random_ghost(i)
 	else:
-		_add_spawn("Ghost", ROLE_GHOST, (_points.get_node("GhostStart") as Marker3D).global_transform, {"player_start": true})
-		_add_spawn("Hunter", ROLE_HUNTER, hunter_start.global_transform, {"behavior": DummySpawn.Behavior.AI})
+		_add_spawn("Presa", ROLE_GHOST, (_points.get_node("GhostStart") as Marker3D).global_transform, {"player_start": true})
+		_add_spawn("Cazador", ROLE_HUNTER, hunter_start.global_transform, {"behavior": DummySpawn.Behavior.AI})
 
 
 ## Cada Ghost IA empieza en un Marker3D distinto de Points/GhostSpots.
@@ -111,7 +113,7 @@ func _add_random_ghost(index: int) -> void:
 	var candidate: Node3D = _ghost_candidates.pop_back()
 	var props := {"behavior": DummySpawn.Behavior.AI}
 	var basis := Basis(Vector3.UP, randf() * TAU)
-	_add_spawn("Ghost%d" % (index + 1), ROLE_GHOST, Transform3D(basis, candidate.global_position), props)
+	_add_spawn("Presa%d" % (index + 1), ROLE_GHOST, Transform3D(basis, candidate.global_position), props)
 
 
 func _add_spawn(spawn_name: String, role: int, at: Transform3D, props: Dictionary) -> void:
@@ -135,8 +137,8 @@ func _pick_dark_room() -> void:
 
 func _intro_text() -> String:
 	if player_role == ROLE_HUNTER:
-		return "Captura a los %d Ghosts antes de que acabe el tiempo." % GameManager.config.ghost_count
-	return "Sobrevive hasta que acabe el tiempo. El Hunter sale en %d s." % int(GameManager.config.prep_time)
+		return "Captura a las %d Presas antes de que acabe el tiempo." % GameManager.config.ghost_count
+	return "Sobrevive hasta que acabe el tiempo. El Cazador sale en %d s." % int(GameManager.config.prep_time)
 
 
 # --- Fases -----------------------------------------------------------------------
@@ -149,7 +151,8 @@ func _set_phase(new_phase: Phase) -> void:
 		Phase.PLAYING:
 			_freeze_group("hunters", false)
 			_hud.set_blackout(false)
-			_hud.show_message("¡A cazar!" if player_role == ROLE_HUNTER else "¡El Hunter ha salido!")
+			Audio.play("hunt_start")
+			_hud.show_message("¡A cazar!" if player_role == ROLE_HUNTER else "¡El Cazador ha salido!")
 		Phase.ENDED:
 			_freeze_group("hunters", true)
 			_freeze_group("ghosts", true)
@@ -164,7 +167,8 @@ func _end(winner: int) -> void:
 	winner_role = winner
 	_set_phase(Phase.ENDED)
 	_hud.visible = false
-	var title := "¡GANA EL HUNTER!" if winner == ROLE_HUNTER else "¡GANAN LOS GHOSTS!"
+	Audio.play("win" if winner == player_role else "lose")
+	var title := "¡GANA EL CAZADOR!" if winner == ROLE_HUNTER else "¡GANAN LAS PRESAS!"
 	_result_screen = ResultScreen.new()
 	add_child(_result_screen)
 	_result_screen.show_result(title, winner == player_role, _stats_text())
@@ -186,8 +190,12 @@ func _update_match_hud() -> void:
 	match phase:
 		Phase.PREP:
 			var seconds := ceili(prep_left)
+			# Pitido en los últimos 3 segundos de la preparación.
+			if seconds <= 3 and seconds != _last_beep:
+				_last_beep = seconds
+				Audio.play("beep")
 			if player_role == ROLE_HUNTER:
-				_hud.set_blackout(true, "Los Ghosts se están escondiendo...\n%d" % seconds)
+				_hud.set_blackout(true, "Las Presas se están escondiendo...\n%d" % seconds)
 			_hud.set_timer_text("Preparación: %d" % seconds)
 		Phase.PLAYING:
 			var total := ceili(time_left)
@@ -245,9 +253,9 @@ func _stats_text() -> String:
 	var played := int(_played_seconds())
 	var lines := PackedStringArray([
 		"Duración: %d:%02d" % [played / 60, played % 60],
-		"Ghosts capturados: %d / %d" % [captured, ghosts],
+		"Presas capturadas: %d / %d" % [captured, ghosts],
 		"Redes: %d disparadas, %d acertadas, %d escapes" % [_stats["redes_disparadas"], _stats["redes_acertadas"], _stats["escapes_de_red"]],
-		"Armarios registrados: %d (%d con Ghost dentro)" % [_stats["armarios_registrados"], _stats["ghosts_encontrados_en_armario"]],
+		"Armarios registrados: %d (%d con Presa dentro)" % [_stats["armarios_registrados"], _stats["ghosts_encontrados_en_armario"]],
 		"Tiempo escondido en armarios: %.1f s" % _stats["tiempo_escondido_s"],
 		"Puertas usadas: %d · Luces usadas: %d" % [_stats["puertas_usadas"], _stats["luces_usadas"]],
 	])
