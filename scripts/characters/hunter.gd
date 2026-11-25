@@ -102,6 +102,11 @@ func _process_actions(delta: float) -> void:
 
 
 ## Misma función para jugador e IA.
+## Jugando como Ghost, el Hunter se oculta si no está en tu habitación (incluye su cono y etiquetas).
+func set_revealed(revealed: bool) -> void:
+	visible = revealed
+
+
 func fire_net() -> void:
 	var dir := Vector3.ZERO
 	if intent.has_aim:

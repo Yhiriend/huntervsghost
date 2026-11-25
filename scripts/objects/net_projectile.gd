@@ -38,6 +38,8 @@ func launch(shooter: CharacterBase, direction: Vector3) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# La red de un Hunter oculto tampoco se ve.
+	visible = not is_instance_valid(_shooter) or _shooter.is_visible_in_tree()
 	if _finished:
 		return
 	var cfg := GameManager.config

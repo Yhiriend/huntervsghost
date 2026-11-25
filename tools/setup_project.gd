@@ -16,6 +16,7 @@ func _init() -> void:
 	# Móvil: horizontal (gira con el sensor) y el botón Atrás lo gestiona el juego.
 	ProjectSettings.set_setting("display/window/handheld/orientation", 4)
 	ProjectSettings.set_setting("application/config/quit_on_go_back", false)
+	ProjectSettings.set_setting("rendering/textures/vram_compression/import_etc2_astc", true)
 	var err := ProjectSettings.save()
 	print("project.godot guardado: ", error_string(err))
 

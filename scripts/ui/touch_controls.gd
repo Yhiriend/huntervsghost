@@ -26,6 +26,10 @@ const COLOR_SNEAK := Color(0.45, 0.75, 1.0, 0.8)
 const COLOR_FIRE := Color(1.0, 0.55, 0.2, 0.55)
 const COLOR_FIRE_OFF := Color(0.5, 0.5, 0.5, 0.35)
 const COLOR_ACTION := Color(0.3, 0.85, 0.5, 0.55)
+const COLOR_ACTION_OFF := Color(0.5, 0.5, 0.5, 0.25)
+const COLOR_TEXT_OFF := Color(1, 1, 1, 0.4)
+## Texto del botón de acción cuando no hay nada que hacer (siempre visible, deshabilitado).
+const ACTION_IDLE_TEXT := "ACCIÓN"
 const COLOR_PRESSED := Color(1, 1, 1, 0.35)
 const COLOR_PROGRESS := Color(1.0, 0.9, 0.3, 0.95)
 
@@ -152,10 +156,12 @@ func _on_touch(index: int, pos: Vector2, pressed: bool) -> void:
 		_fire_index = index
 		_fire_queued = true
 		get_viewport().set_input_as_handled()
-	elif action_text != "" and _action_index < 0 and pos.distance_to(_action_center()) <= ACTION_RADIUS * _scale() * HIT_SLOP:
-		_action_index = index
-		_interact_queued = true
-		interact_held = true
+	elif _action_index < 0 and pos.distance_to(_action_center()) <= ACTION_RADIUS * _scale() * HIT_SLOP:
+		# Siempre visible; deshabilitado (sin acción) solo se traga el toque.
+		if action_text != "":
+			_action_index = index
+			_interact_queued = true
+			interact_held = true
 		get_viewport().set_input_as_handled()
 	elif _joy_index < 0 and _in_joystick_zone(pos):
 		_joy_index = index
@@ -244,10 +250,14 @@ func _draw() -> void:
 			draw_arc(center, r + 6.0 * s, -PI / 2.0, -PI / 2.0 + TAU * fire_ready, 48, COLOR_PROGRESS, 5.0 * s, true)
 		_draw_text(font, center + Vector2(0, 8.0 * s), "RED", 26, s)
 
-	# Botón de acción
-	if action_text != "":
-		var center := _action_center()
-		var r := ACTION_RADIUS * s
+	# Botón de acción: siempre visible; gris y sin efecto si no hay nada que hacer.
+	var center := _action_center()
+	var r := ACTION_RADIUS * s
+	if action_text == "":
+		draw_circle(center, r, COLOR_ACTION_OFF)
+		draw_arc(center, r, 0.0, TAU, 48, Color(1, 1, 1, 0.2), 3.0 * s, true)
+		_draw_text(font, center + Vector2(0, 6.0 * s), ACTION_IDLE_TEXT, 16, s, COLOR_TEXT_OFF)
+	else:
 		draw_circle(center, r, COLOR_PRESSED if _action_index >= 0 else COLOR_ACTION)
 		draw_arc(center, r, 0.0, TAU, 48, COLOR_RING, 3.0 * s, true)
 		if action_progress >= 0.0:
@@ -258,14 +268,14 @@ func _draw() -> void:
 			_draw_text(font, center + Vector2(0, 26.0 * s), "mantén", 12, s)
 
 
-func _draw_text(font: Font, pos: Vector2, text: String, font_size: int, s: float) -> void:
+func _draw_text(font: Font, pos: Vector2, text: String, font_size: int, s: float, color: Color = Color.WHITE) -> void:
 	if text == "":
 		return
 	var px := int(font_size * s)
 	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
 	var at := pos - Vector2(width / 2.0, 0)
 	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(4 * s), Color.BLACK)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color.WHITE)
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, color)
 
 
 func _make_action_button(text: String, action: String) -> Button:

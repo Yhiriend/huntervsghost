@@ -211,10 +211,41 @@ func _update_player_visibility() -> void:
 		var ghost := node as Ghost
 		ghost.set_revealed(not hide_unseen or hunter.vision.can_see(ghost))
 
+	var ghost_player := player as Ghost
+	var room_only := ghost_player != null and GameManager.config.ghost_sees_hunter_same_room_only
+	for node in get_tree().get_nodes_in_group("hunters"):
+		var other := node as Hunter
+		other.set_revealed(not room_only or ghost_can_see_hunter(ghost_player, other))
+
+
+## Jugando como Ghost: ves al Hunter solo si estáis en la misma habitación y no estás en un armario.
+## Un Ghost capturado ya no juega: lo ve todo.
+func ghost_can_see_hunter(ghost: Ghost, hunter: Hunter) -> bool:
+	if ghost.state == Ghost.State.CAPTURED:
+		return true
+	if ghost.state == Ghost.State.HIDDEN:
+		return false
+	var room := _area_of(ghost)
+	return room != null and room == _area_of(hunter)
+
+
+## Habitación en la que está un personaje. En un umbral de puerta (fuera de toda habitación)
+## cuenta la última en la que estuvo, para que no parpadee al cruzar.
+func _area_of(character: CharacterBase) -> Room:
+	var room := Room.find_at(get_tree(), character.global_position)
+	if room:
+		character.set_meta("last_room", room)
+		return room
+	if character.has_meta("last_room"):
+		var last: Variant = character.get_meta("last_room")
+		if is_instance_valid(last):
+			return last
+	return null
+
 
 # --- Ruido -----------------------------------------------------------------------
 
-## Jugando como Hunter: los ruidos de Ghosts que alcanzan al jugador se muestran en una posición
+## Los ruidos del bando contrario que alcanzan al jugador se muestran en una posición
 ## aproximada. Los ruidos propios se muestran tenues, para saber cuándo estás haciendo ruido.
 func _on_noise_made(noise_position: Vector3, radius: float, source: Node) -> void:
 	var player := get_controlled_character()
@@ -227,7 +258,8 @@ func _on_noise_made(noise_position: Vector3, radius: float, source: Node) -> voi
 	if source == player:
 		_spawn_noise_ring(noise_position, OWN_NOISE_COLOR, 0.6)
 		return
-	if not (player is Hunter and source is Ghost):
+	# Cada bando oye los ruidos del otro (pasos, puertas, armarios...) en una posición aproximada.
+	if not ((player is Hunter and source is Ghost) or (player is Ghost and source is Hunter)):
 		return
 	var offset := noise_position - player.global_position
 	offset.y = 0.0

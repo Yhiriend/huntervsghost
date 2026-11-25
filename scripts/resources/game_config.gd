@@ -35,6 +35,9 @@ extends Resource
 @export_range(0.0, 5.0, 0.1) var vision_proximity_radius: float = 1.5
 ## Si está activo, jugando como Hunter solo ves a los Ghosts que están en tu visión.
 @export var hunter_vision_hides_ghosts: bool = true
+## Jugando como Ghost: el Hunter solo se ve si está en tu misma habitación (escondido en un armario,
+## nunca). Fuera de eso solo se perciben sus pasos y ruidos.
+@export var ghost_sees_hunter_same_room_only: bool = true
 ## Número de rayos para dibujar el cono de depuración.
 @export_range(8, 128, 1) var vision_debug_rays: int = 40
 
