@@ -90,7 +90,7 @@ func run() -> void:
 	m._log_match(true)
 	var lines := csv_lines()
 	check(lines.size() == 2 and lines[0].begins_with("fecha,rol_jugador,ganador"), "CSV con cabecera y una fila")
-	check(lines.size() == 2 and ",hunter,hunter," in lines[1] and lines[1].contains(",4,si,normal,"), "Fila: rol hunter, gana hunter, diversión 4, jugar otra sí")
+	check(lines.size() == 2 and ",hunter,hunter," in lines[1] and lines[1].contains(",4,,normal,"), "Fila: rol hunter, gana hunter, diversión 4 (ronda intermedia: sin jugar otra)")
 	check(lines.size() == 2 and lines[1].split(",")[6] == "1" and lines[1].split(",")[7] == "2", "Fila: 1 red disparada, 2 acertadas (%s)" % (lines[1] if lines.size() == 2 else ""))
 
 	# ---- Partida como Ghost: gana si se acaba el tiempo ----
@@ -108,6 +108,9 @@ func run() -> void:
 
 	# ---- Partida como Ghost: el maniquí Hunter atrapa y captura ----
 	cfg.match_duration = 30.0
+	# Puntería perfecta: con el error aleatorio de la IA la prueba fallaba ~1 de cada 6 veces.
+	var aim_error := cfg.ai_aim_error
+	cfg.ai_aim_error = 0.0
 	m = await start_match(DummySpawn.Role.GHOST)
 	ghost = get_tree().get_nodes_in_group("ghosts")[0]
 	hunter = get_tree().get_nodes_in_group("hunters")[0]
@@ -121,6 +124,7 @@ func run() -> void:
 		if m.phase == MatchScenario.Phase.ENDED:
 			ended = true
 			break
+	cfg.ai_aim_error = aim_error
 	check(ended and m.winner_role == DummySpawn.Role.HUNTER, "El Hunter maniquí dispara, se acerca y captura -> gana el Hunter (estado ghost=%d)" % ghost.state)
 
 	await clear()

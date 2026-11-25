@@ -13,6 +13,8 @@ var config: GameConfig = _load_config()
 
 ## Bando del jugador en la próxima partida (DummySpawn.Role: 0 = Hunter, 1 = Ghost).
 var selected_role: int = 0
+## Serie de rondas en curso (null fuera de una partida).
+var series: MatchSeries
 
 enum Difficulty { EASY, NORMAL, HARD }
 const DIFFICULTY_NAMES := ["facil", "normal", "dificil"]
@@ -87,12 +89,15 @@ func get_difficulty_name() -> String:
 	return DIFFICULTY_NAMES[difficulty]
 
 
+## Empieza una serie de rondas (MatchSeries) con el jugador en el bando indicado.
 func start_match(role: int) -> void:
 	selected_role = role
+	series = MatchSeries.new(role)
 	get_tree().change_scene_to_file(MATCH_SCENE)
 
 
 func go_to_menu() -> void:
+	series = null
 	get_tree().change_scene_to_file(MENU_SCENE)
 
 

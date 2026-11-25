@@ -7,6 +7,7 @@ const MESSAGE_FADE_TIME := 0.5
 
 var _controlled: CharacterBase
 var _timer_label: Label
+var _round_label: Label
 var _blackout: ColorRect
 var _blackout_label: Label
 var _ghosts_label: Label
@@ -28,6 +29,11 @@ func _ready() -> void:
 
 func set_controlled(character: CharacterBase) -> void:
 	_controlled = character
+
+
+## Ronda y marcador de la serie ("" lo oculta).
+func set_round_text(text: String) -> void:
+	_round_label.text = text
 
 
 ## Temporizador de la partida ("" lo oculta).
@@ -162,6 +168,9 @@ func _build_ui() -> void:
 	top.offset_top = 10.0
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(top)
+	_round_label = _make_label(18)
+	_round_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
+	top.add_child(_round_label)
 	_timer_label = _make_label(34)
 	top.add_child(_timer_label)
 	_ghosts_label = _make_label(24)

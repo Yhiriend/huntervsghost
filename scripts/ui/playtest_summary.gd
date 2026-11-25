@@ -78,7 +78,8 @@ static func build_report(rows: Array[Dictionary]) -> String:
 
 	# --- Diversión (lo más importante) ---
 	out.append("[b]DIVERSIÓN[/b]")
-	out.append(_line("Quiere jugar otra partida", _percent(finished, func(r): return r.get("jugar_otra") == "si"), 60.0, 101.0, "La métrica principal."))
+	# Solo cuentan las filas que cierran una partida (las rondas intermedias no preguntan).
+	out.append(_line("Quiere jugar otra partida", _percent(_answered(finished, "jugar_otra"), func(r): return r.get("jugar_otra") == "si"), 60.0, 101.0, "La métrica principal."))
 	var ratings := _numbers(finished, "diversion_1a5")
 	out.append(_line_value("Diversión media (1-5)", _avg_text(ratings, 1), ratings.size(), _avg(ratings) >= 3.5, "%d valoraciones" % ratings.size()))
 	out.append(_line("Hubo un momento de tensión", _percent(_answered(finished, "tension"), func(r): return r.get("tension") == "si"), 50.0, 101.0, ""))
@@ -86,6 +87,16 @@ static func build_report(rows: Array[Dictionary]) -> String:
 	out.append(_line("Resultado por mis decisiones", _percent(by, func(r): return r.get("resultado_por") == "decisiones"), 50.0, 101.0,
 		"suerte %s · injusto %s" % [_pct_text(_percent(by, func(r): return r.get("resultado_por") == "suerte")), _pct_text(_percent(by, func(r): return r.get("resultado_por") == "injusto"))]))
 	out.append("")
+
+	# --- Series de rondas ---
+	var series_rows := finished.filter(func(r): return String(r.get("resultado_serie", "")) != "")
+	if not series_rows.is_empty():
+		out.append("[b]PARTIDAS POR RONDAS[/b]  (%d terminadas)" % series_rows.size())
+		out.append(_line("Partidas ganadas por ti", _percent(series_rows, func(r): return r.get("resultado_serie") == "gana_jugador"), 40.0, 60.0,
+			"empates %s" % _pct_text(_percent(series_rows, func(r): return r.get("resultado_serie") == "empate"))))
+		var rounds := _numbers(series_rows, "ronda")
+		out.append(_line_value("Rondas por partida", "%.1f" % _avg(rounds), rounds.size(), _avg(rounds) > 3.0, "3 = paliza; 4 o más = partidas igualadas."))
+		out.append("")
 
 	# --- Por bando ---
 	for role in ["hunter", "ghost"]:

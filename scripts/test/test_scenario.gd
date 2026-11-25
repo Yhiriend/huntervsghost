@@ -223,13 +223,16 @@ func _update_player_visibility() -> void:
 		other.set_revealed(not room_only or ghost_can_see_hunter(ghost_player, other))
 
 
-## Jugando como Ghost: ves al Hunter solo si estáis en la misma habitación y no estás en un armario.
-## Un Ghost capturado ya no juega: lo ve todo.
+## Jugando como Presa: ves al Cazador si estáis en la misma habitación o si él te está viendo
+## (sabes de dónde viene la amenaza). Escondida en un armario no lo ves nunca.
+## Una Presa capturada ya no juega: lo ve todo.
 func ghost_can_see_hunter(ghost: Ghost, hunter: Hunter) -> bool:
 	if ghost.state == Ghost.State.CAPTURED:
 		return true
 	if ghost.state == Ghost.State.HIDDEN:
 		return false
+	if hunter.vision.can_see(ghost):
+		return true
 	var room := _area_of(ghost)
 	return room != null and room == _area_of(hunter)
 

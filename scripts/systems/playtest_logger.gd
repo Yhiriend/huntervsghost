@@ -27,6 +27,10 @@ const COLUMNS: PackedStringArray = [
 	"tension",
 	"resultado_por",
 	"nota",
+	"serie",
+	"ronda",
+	"marcador",
+	"resultado_serie",
 ]
 
 

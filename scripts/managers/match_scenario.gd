@@ -8,7 +8,9 @@ extends TestScenario
 ## Victoria del Hunter: todos los Ghosts capturados antes de que acabe el tiempo.
 ## Victoria de los Ghosts: al menos uno libre cuando el tiempo llega a cero.
 ## La captura se comprueba antes que el tiempo: una captura completada en el último frame cuenta.
-## Cada partida se guarda en user://playtests.csv (PlaytestLogger).
+## Cada ronda forma parte de una serie (MatchSeries en GameManager.series): 4 rondas, cambio de
+## bando en la 3, gana quien llegue a 3; desempates por parejas y votación si sigue el empate.
+## Cada ronda se guarda en user://playtests.csv (PlaytestLogger).
 
 enum Phase { PREP, PLAYING, ENDED }
 
@@ -39,6 +41,10 @@ var _result_screen: ResultScreen
 var _ghost_candidates: Array = []
 
 var _last_beep: int = -1
+## Serie a la que pertenece esta ronda.
+var series: MatchSeries
+## Número de esta ronda dentro de la serie.
+var round_number: int = 1
 
 @onready var _points: Node3D = $Points
 @onready var _route: Path3D = $Routes/RutaPatrulla
@@ -46,12 +52,19 @@ var _last_beep: int = -1
 
 func _ready() -> void:
 	player_role = GameManager.selected_role
+	series = GameManager.series
+	# Sin serie en curso (o de otro bando, p. ej. al abrir la escena directamente): empezar una.
+	if series == null or series.is_over() or series.current_role() != player_role:
+		series = MatchSeries.new(player_role)
+		GameManager.series = series
+	round_number = series.current_round()
 	allow_switch = false
 	_build_spawns()
 	_pick_dark_room()
 	description = _intro_text()
 	super()
 	_connect_stats()
+	_hud.set_round_text("%s  ·  %s" % [series.round_label(round_number), series.score_text()])
 	prep_left = GameManager.config.prep_time
 	time_left = GameManager.config.match_duration
 	_set_phase(Phase.PREP)
@@ -75,16 +88,19 @@ func _physics_process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# R en la pantalla de resultados = botón principal (siguiente ronda / nueva partida...).
 	if phase == Phase.ENDED and event.is_action_pressed("reset_scenario"):
-		_leave(true)
+		if is_instance_valid(_result_screen) and _result_screen.primary_choice != "":
+			_on_choice(_result_screen.primary_choice)
 		get_viewport().set_input_as_handled()
 		return
 	super(event)
 
 
-## R durante la partida: reiniciarla.
+## R durante la partida: repetir esta ronda (no cuenta para la serie).
 func reset_scenario() -> void:
-	_leave(true)
+	_log_match(false)
+	get_tree().reload_current_scene()
 
 
 func _exit_tree() -> void:
@@ -136,9 +152,18 @@ func _pick_dark_room() -> void:
 
 
 func _intro_text() -> String:
+	var goal := ""
 	if player_role == ROLE_HUNTER:
-		return "Captura a las %d Presas antes de que acabe el tiempo." % GameManager.config.ghost_count
-	return "Sobrevive hasta que acabe el tiempo. El Cazador sale en %d s." % int(GameManager.config.prep_time)
+		goal = "Captura a las %d Presas antes de que acabe el tiempo." % GameManager.config.ghost_count
+	else:
+		goal = "Sobrevive hasta que acabe el tiempo. El Cazador sale en %d s." % int(GameManager.config.prep_time)
+	var header := "%s · %s" % [series.round_label(round_number).to_upper(), series.score_text()]
+	var role := "CAZADOR" if player_role == ROLE_HUNTER else "PRESA"
+	if round_number > 1 and series.role_for_round(round_number - 1) != player_role:
+		header += "\n¡Cambio de bando! Ahora eres %s." % role
+	elif round_number == 1:
+		header += "\nEres %s. Gana quien llegue a %d victorias." % [role, MatchSeries.WINS_NEEDED]
+	return header + "\n" + goal
 
 
 # --- Fases -----------------------------------------------------------------------
@@ -167,21 +192,67 @@ func _end(winner: int) -> void:
 	winner_role = winner
 	_set_phase(Phase.ENDED)
 	_hud.visible = false
-	Audio.play("win" if winner == player_role else "lose")
+	series.record(winner == player_role)
 	var title := "¡GANA EL CAZADOR!" if winner == ROLE_HUNTER else "¡GANAN LAS PRESAS!"
 	_result_screen = ResultScreen.new()
 	add_child(_result_screen)
 	_result_screen.show_result(title, winner == player_role, _stats_text())
 	_result_screen.rating_changed.connect(func(value: int) -> void: _rating = value)
-	_result_screen.finished.connect(_leave)
-
-
-func _leave(play_again: bool) -> void:
-	_log_match(play_again)
-	if play_again:
-		get_tree().reload_current_scene()
+	_result_screen.choice.connect(_on_choice)
+	_refresh_result_screen()
+	if series.is_over():
+		Audio.play("win" if series.status == MatchSeries.Status.PLAYER_WINS else "lose")
 	else:
-		GameManager.go_to_menu()
+		Audio.play("win" if winner == player_role else "lose")
+
+
+## Marcador, cuestionario y botones según el estado de la serie.
+func _refresh_result_screen() -> void:
+	var rs := _result_screen
+	var header := "%s  ·  %s" % [series.round_label(round_number), series.score_text()]
+	match series.status:
+		MatchSeries.Status.PLAYING:
+			var next_role := "CAZADOR" if series.current_role() == ROLE_HUNTER else "PRESA"
+			var swap := "  (¡cambio de bando!)" if series.next_round_swaps() else ""
+			rs.set_series_text("%s\nSiguiente: %s — juegas como %s%s" % [header, series.round_label(), next_role, swap])
+			rs.set_questionnaire_visible(false)
+			rs.set_choices([["Siguiente ronda (R)", "next"], ["Abandonar (Esc)", "menu"]])
+		MatchSeries.Status.TIE_VOTE:
+			rs.set_series_text("%s\n¡Siguen empatados! ¿Otro desempate (una ronda con cada bando) o terminar en empate?" % header, Color(0.6, 0.85, 1.0))
+			rs.set_questionnaire_visible(false)
+			rs.set_choices([["Desempatar (R)", "tiebreak"], ["Terminar en empate", "draw"]])
+		_:
+			var final := "EMPATE"
+			var color := Color(0.8, 0.8, 0.9)
+			if series.status == MatchSeries.Status.PLAYER_WINS:
+				final = "¡HAS GANADO LA PARTIDA!"
+				color = Color(0.5, 1.0, 0.55)
+			elif series.status == MatchSeries.Status.AI_WINS:
+				final = "LA IA GANA LA PARTIDA"
+				color = Color(1.0, 0.5, 0.45)
+			rs.set_series_text("%s\nResultado final: %s" % [final, series.score_text()], color)
+			rs.set_questionnaire_visible(true)
+			rs.set_choices([["Nueva partida (R)", "new"], ["Menú principal (Esc)", "menu"]])
+
+
+func _on_choice(id: String) -> void:
+	match id:
+		"next":
+			_log_match(false)
+			GameManager.selected_role = series.current_role()
+			get_tree().reload_current_scene()
+		"tiebreak":
+			series.continue_tiebreak()
+			_on_choice("next")
+		"draw":
+			series.declare_draw()
+			_refresh_result_screen()
+		"new":
+			_log_match(true)
+			GameManager.start_match(series.starting_role)
+		"menu":
+			_log_match(false)
+			GameManager.go_to_menu()
 
 
 # --- HUD -------------------------------------------------------------------------
@@ -280,8 +351,13 @@ func _log_match(play_again: bool) -> void:
 		"ghosts_total": ghosts,
 		"ghosts_capturados": ghosts - _count_free_ghosts() if is_inside_tree() else "",
 		"diversion_1a5": _rating if _rating > 0 else "",
-		"jugar_otra": "si" if play_again else "no",
+		# "Jugar otra" solo tiene sentido al terminar la serie (las rondas intermedias continúan solas).
+		"jugar_otra": ("si" if play_again else "no") if series.is_over() else "",
 		"dificultad": GameManager.get_difficulty_name(),
+		"serie": series.id,
+		"ronda": round_number,
+		"marcador": "%d-%d" % [series.player_wins(), series.ai_wins()],
+		"resultado_serie": series.result_code(),
 	}
 	if is_instance_valid(_result_screen):
 		row.merge(_result_screen.get_answers(), true)

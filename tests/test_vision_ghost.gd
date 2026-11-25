@@ -78,6 +78,39 @@ func run() -> void:
 	await frames(1)
 	check(not hunter.visible and rings(m) > before, "Otra habitación: no se ve al Hunter pero sí sus pasos")
 
+	# El Cazador está en otra habitación pero ve a la Presa (por una puerta abierta): la Presa le ve.
+	var found := false
+	for door in get_tree().get_nodes_in_group("doors"):
+		(door as Door).set_open(true, null, false)
+	await frames(2)
+	for room in get_tree().get_nodes_in_group("rooms"):
+		if found:
+			break
+		for other in get_tree().get_nodes_in_group("rooms"):
+			if room == other or found:
+				continue
+			for i in range(-4, 5):
+				for j in range(-4, 5):
+					var p := (other as Room).global_position + Vector3(i * 0.8, 0, j * 0.8)
+					if Room.find_at(get_tree(), p) != other:
+						continue
+					place(hunter, room)
+					ghost.global_position = Vector3(p.x, ghost.global_position.y, p.z)
+					var d := ghost.global_position - hunter.global_position
+					hunter.rotation.y = atan2(-d.x, -d.z)
+					if hunter.vision.can_see(ghost):
+						found = true
+						break
+				if found:
+					break
+	check(found, "Hay una posición en otra habitación desde la que el Cazador ve a la Presa")
+	await frames(3)
+	check(found and hunter.vision.can_see(ghost) and hunter.visible, "El Cazador te ve desde otra habitación: tú también le ves")
+	var d2 := ghost.global_position - hunter.global_position
+	hunter.rotation.y = atan2(d2.x, d2.z)  # Mira hacia el otro lado.
+	await frames(3)
+	check(not hunter.vision.can_see(ghost) and not hunter.visible, "Si deja de verte (te da la espalda) vuelve a ocultarse")
+
 	GameManager.config.ghost_sees_hunter_same_room_only = false
 	await frames(2)
 	check(hunter.visible, "Con el ajuste desactivado se ve al Hunter siempre")
