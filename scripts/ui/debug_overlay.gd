@@ -69,7 +69,7 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("debug_panel"):
 		toggle_panel()
 		get_viewport().set_input_as_handled()
-	elif event is InputEventKey and event.is_pressed() and not event.is_echo():
+	elif event is InputEventKey and event.is_pressed() and not event.is_echo() and not Net.is_active():
 		for action in SCENES:
 			if event.is_action(action):
 				get_tree().change_scene_to_file(SCENES[action])

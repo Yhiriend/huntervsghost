@@ -1,7 +1,7 @@
 class_name ResultScreen
 extends CanvasLayer
-## Pantalla de resultados de una ronda / de la serie.
-##   - Título, si has ganado, marcador de la serie y estadísticas de la ronda.
+## Pantalla de resultados de una ronda / de la partida.
+##   - Título, lo que has ganado en la ronda, clasificación, estado de la partida y estadísticas.
 ##   - Mini cuestionario de diversión (solo al final de la serie; respuestas opcionales al CSV).
 ##   - Botones configurables (set_choices): emiten choice(id). El primero es el principal (R).
 
@@ -17,6 +17,7 @@ var _note: LineEdit
 var _title: Label
 var _subtitle: Label
 var _series: Label
+var _table: Label
 ## Estadísticas en dos columnas (cabe mejor en la pantalla del móvil).
 var _stats_left: Label
 var _stats_right: Label
@@ -29,17 +30,24 @@ func _ready() -> void:
 	_build_ui()
 
 
-func show_result(title: String, player_won: bool, stats_text: String) -> void:
+## good: el subtítulo es una buena noticia para el jugador (verde) o no (rojo).
+func show_result(title: String, subtitle: String, good: bool, stats_text: String) -> void:
 	_title.text = title
-	_subtitle.text = "¡Has ganado la ronda!" if player_won else "Has perdido la ronda"
-	_subtitle.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55) if player_won else Color(1.0, 0.5, 0.45))
+	_subtitle.text = subtitle
+	_subtitle.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55) if good else Color(1.0, 0.5, 0.45))
 	var lines := stats_text.split("\n")
 	var half := ceili(lines.size() / 2.0)
 	_stats_left.text = "\n".join(lines.slice(0, half))
 	_stats_right.text = "\n".join(lines.slice(half))
 
 
-## Marcador / estado de la serie (vacío = oculto).
+## Clasificación (una línea por participante).
+func set_table_text(text: String) -> void:
+	_table.text = text
+	_table.visible = text != ""
+
+
+## Estado de la partida (vacío = oculto).
 func set_series_text(text: String, color: Color = Color(1.0, 0.85, 0.4)) -> void:
 	_series.text = text
 	_series.visible = text != ""
@@ -93,11 +101,14 @@ func _build_ui() -> void:
 	box.add_theme_constant_override("separation", 6)
 	margin.add_child(box)
 
-	_title = _label(32)
+	_title = _label(30)
 	box.add_child(_title)
 	_subtitle = _label(22)
 	box.add_child(_subtitle)
-	_series = _label(20)
+	_table = _label(16)
+	_table.visible = false
+	box.add_child(_table)
+	_series = _label(19)
 	_series.visible = false
 	box.add_child(_series)
 	var stats_row := HBoxContainer.new()
@@ -122,7 +133,7 @@ func _build_ui() -> void:
 		button.text = str(i)
 		button.toggle_mode = true
 		button.button_group = group
-		button.custom_minimum_size = Vector2(56, 40)
+		button.custom_minimum_size = Vector2(56, 36)
 		button.focus_mode = Control.FOCUS_NONE
 		button.pressed.connect(_on_rating.bind(i))
 		rating_row.add_child(button)

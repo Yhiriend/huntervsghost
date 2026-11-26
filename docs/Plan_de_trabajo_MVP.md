@@ -227,6 +227,18 @@ Protocolo (lo hace el jugador):
 
 **Puerta 7:** ¿Sigue siendo divertido con controles táctiles?
 
+### Fase 8 — Partida de 4 y multijugador en red local
+- [x] **Puntos individuales** (también contra la IA): siempre 1 Cazador y 3 Presas; cada uno de los 4 participantes es Cazador una ronda.
+  - Cazador: 1 punto por Presa atrapada. Presa: 1 punto si sobrevive.
+  - Empate a puntos → decide el tiempo (segundos sobrevividos como Presa + segundos que le sobraban al Cazador en cada captura).
+  - Empate exacto → minidesempate solo entre los empatados (cada uno caza una vez; las Presas que faltan son IA de relleno que no puntúan); los demás miran y cambian de cámara (Tab / *Cambiar cámara*). Si siguen empatados, votación: otro desempate o empate.
+- [x] **Red local (misma WiFi):** *Multijugador* → *Crear sala* / salas encontradas en la WiFi / *Unirse por IP*. Los huecos los ocupa la IA; si alguien se va, la IA toma su personaje.
+  - El anfitrión simula todo y envía el estado 30 veces por segundo más eventos (puertas, luces, redes, capturas, sonidos y ruidos). Los clientes solo envían sus controles.
+  - Puertos UDP 24680 (partida) y 24681 (anuncio de salas). En Mac, permitir las conexiones entrantes si el sistema lo pregunta.
+- [x] Prueba automática con dos procesos (`tests/test_red.tscn` lanza `tests/net_client.tscn`).
+- [ ] Probar con varios teléfonos reales y medir el retardo.
+- [ ] Siguiente: internet (necesita un servidor intermedio: los móviles con datos no se conectan directamente).
+
 **Total orientativo:** ~20 jornadas hasta el MVP en móvil.
 - Mecánicas validadas con maniquíes: **~10 jornadas** (fin de la Fase 3).
 - Primera respuesta sobre la diversión: **~16 jornadas** (Fase 6).
@@ -263,7 +275,7 @@ Sigues queriendo jugar "una más" aunque ya no estés probando nada concreto, y 
 ## 6. Qué NO hacer durante el MVP
 - Modelos, texturas, animaciones o shaders propios.
 - Transparencia de paredes, menús elaborados, ajustes gráficos.
-- Networking (solo mantener la entrada separada).
+- Networking por internet (la red local ya existe; internet necesitará un servidor).
 - Cualquier elemento de la sección 13 del GDD.
 - Añadir mecánicas nuevas antes de pasar la puerta de la fase actual.
 

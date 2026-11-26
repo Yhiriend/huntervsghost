@@ -204,6 +204,7 @@ func run() -> void:
 	# --- Partida: sin botones de escenario ---
 	cfg.touch_controls_on_pc = true
 	GameManager.selected_role = DummySpawn.Role.HUNTER
+	GameManager.series = null
 	PlaytestLogger.path = "user://_test_playtests.csv"
 	var m: MatchScenario = load("res://scenes/game/Match.tscn").instantiate()
 	add_child(m)

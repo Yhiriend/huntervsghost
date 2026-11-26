@@ -17,6 +17,12 @@ var vision: VisionSensor
 ## Objeto que se está usando manteniendo E (p. ej. registrar un armario).
 var interact_target: Interactable = null
 var interact_progress: float = 0.0
+## En red, en un cliente: el personaje no simula nada; su posición y estado llegan del anfitrión
+## (net_target_*) y aquí solo se suavizan. El controlador sigue calculando intenciones (para
+## enviar las del jugador local).
+var net_puppet: bool = false
+var net_target_position := Vector3.ZERO
+var net_target_yaw: float = 0.0
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _footstep_timer: float = 0.0
@@ -166,6 +172,9 @@ func _physics_process(delta: float) -> void:
 		controller.update_intent(self, intent)
 	if frozen:
 		intent.reset()
+	if net_puppet:
+		_puppet_process(delta)
+		return
 	if not is_active():
 		return
 	_process_actions(delta)
@@ -203,6 +212,26 @@ func _apply_movement(delta: float) -> void:
 	if facing.length_squared() > 0.01:
 		var target_yaw := atan2(-facing.x, -facing.z)
 		rotation.y = lerp_angle(rotation.y, target_yaw, 1.0 - exp(-cfg.turn_speed * delta))
+
+
+## Cliente de red: acercarse suavemente a la posición que manda el anfitrión.
+const PUPPET_SMOOTHING := 18.0
+## Más lejos que esto se salta directamente (p. ej. al salir de un armario).
+const PUPPET_SNAP_DISTANCE := 2.5
+
+
+func set_net_target(target_position: Vector3, yaw: float, snap: bool = false) -> void:
+	net_target_position = target_position
+	net_target_yaw = yaw
+	if snap or global_position.distance_to(target_position) > PUPPET_SNAP_DISTANCE:
+		global_position = target_position
+		rotation.y = yaw
+
+
+func _puppet_process(delta: float) -> void:
+	var weight := 1.0 - exp(-PUPPET_SMOOTHING * delta)
+	global_position = global_position.lerp(net_target_position, weight)
+	rotation.y = lerp_angle(rotation.y, net_target_yaw, weight)
 
 
 ## Correr (no en sigilo) hace ruido de pasos cada footstep_interval segundos.

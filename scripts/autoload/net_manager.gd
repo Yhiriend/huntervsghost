@@ -1,0 +1,415 @@
+extends Node
+## Autoload "Net": multijugador en red local (misma WiFi).
+##
+## - Un jugador crea la sala y hace de anfitrión: ejecuta la partida completa (física, IA,
+##   capturas) y envía el estado a los demás. Los clientes solo mandan sus controles.
+## - Las salas se anuncian por difusión UDP (DISCOVERY_PORT) cada segundo; también se puede
+##   entrar escribiendo la IP del anfitrión.
+## - Siempre se juega con 1 Cazador y 3 Presas: los puestos libres los ocupa la IA.
+## - La partida (MatchSeries) la decide el anfitrión; cada ronda se carga en todos con
+##   load_round(), y el anfitrión espera a que todos los clientes estén listos.
+
+signal lobby_changed
+signal rooms_changed
+## Conexión con el anfitrión establecida / fallida.
+signal joined
+signal join_failed
+## Se ha perdido la sesión (el anfitrión se fue o nos echó). reason es un texto para el jugador.
+signal session_ended(reason: String)
+## Un jugador se ha ido durante la sesión (solo en el anfitrión).
+signal player_left(peer: int)
+
+const PORT := 24680
+const DISCOVERY_PORT := 24681
+const MAX_PLAYERS := MatchSeries.SLOTS
+const GAME_TAG := "cazador-o-presa"
+const PROTOCOL := 1
+const ANNOUNCE_INTERVAL := 1.0
+## Una sala que no se anuncia en este tiempo desaparece de la lista.
+const ROOM_TIMEOUT := 3.5
+const SETTINGS_PATH := "user://ajustes.cfg"
+const LOBBY_SCENE := "res://scenes/main/Lobby.tscn"
+
+## Nombre del jugador (se guarda en ajustes.cfg).
+var player_name: String = ""
+## Jugadores de la sala: peer -> {"name": String}. El anfitrión es el peer 1.
+var players: Dictionary = {}
+## Orden de llegada (el anfitrión primero).
+var player_order: Array = []
+var room_name: String = ""
+## La sesión ya ha empezado a jugar (no se admiten más jugadores).
+var in_game: bool = false
+## Salas encontradas: ip -> {"name", "players", "port", "seen"}.
+var rooms: Dictionary = {}
+
+## Clientes que ya han cargado la ronda actual (solo anfitrión).
+var _ready_peers: Dictionary = {}
+var _announce: PacketPeerUDP
+var _announce_left: float = 0.0
+var _listen: PacketPeerUDP
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_load_settings()
+	multiplayer.peer_connected.connect(_on_peer_connected)
+	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	multiplayer.connected_to_server.connect(_on_connected_to_server)
+	multiplayer.connection_failed.connect(_on_connection_failed)
+	multiplayer.server_disconnected.connect(_on_server_disconnected)
+
+
+func _process(delta: float) -> void:
+	if _announce and is_host() and not in_game:
+		_announce_left -= delta
+		if _announce_left <= 0.0:
+			_announce_left = ANNOUNCE_INTERVAL
+			_send_announce()
+	if _listen:
+		_poll_discovery()
+
+
+# --- Estado ----------------------------------------------------------------------
+
+## Hay una sesión de red (como anfitrión o cliente).
+func is_active() -> bool:
+	return multiplayer.has_multiplayer_peer() and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer \
+		and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
+
+
+func is_host() -> bool:
+	return is_active() and multiplayer.is_server()
+
+
+func is_client() -> bool:
+	return is_active() and not multiplayer.is_server()
+
+
+## Peer de este dispositivo (1 = anfitrión o partida sin red).
+func local_peer() -> int:
+	return multiplayer.get_unique_id() if is_active() else 1
+
+
+## IPs de esta máquina en la red local (para que los demás se unan escribiéndola).
+func local_ips() -> PackedStringArray:
+	var out := PackedStringArray()
+	for address in IP.get_local_addresses():
+		if address.begins_with("192.168.") or address.begins_with("10.") or _is_172_private(address):
+			out.append(address)
+	return out
+
+
+func set_player_name(value: String) -> void:
+	player_name = value.strip_edges().left(14)
+	if player_name == "":
+		player_name = "Jugador"
+	_save_settings()
+
+
+# --- Sala ------------------------------------------------------------------------
+
+func host_room() -> Error:
+	leave()
+	var peer := ENetMultiplayerPeer.new()
+	var err := peer.create_server(PORT, MAX_PLAYERS - 1)
+	if err != OK:
+		return err
+	multiplayer.multiplayer_peer = peer
+	room_name = "Sala de %s" % player_name
+	players = {1: {"name": player_name}}
+	player_order = [1]
+	in_game = false
+	_announce = PacketPeerUDP.new()
+	_announce.set_broadcast_enabled(true)
+	_announce_left = 0.0
+	stop_discovery()
+	lobby_changed.emit()
+	return OK
+
+
+func join_room(address: String, port: int = PORT) -> Error:
+	leave()
+	var peer := ENetMultiplayerPeer.new()
+	var err := peer.create_client(address.strip_edges(), port)
+	if err != OK:
+		return err
+	multiplayer.multiplayer_peer = peer
+	return OK
+
+
+## Sale de la sala o partida (cierra la conexión).
+func leave() -> void:
+	if multiplayer.has_multiplayer_peer() and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
+		multiplayer.multiplayer_peer.close()
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	players = {}
+	player_order = []
+	in_game = false
+	_ready_peers = {}
+	if _announce:
+		_announce.close()
+		_announce = null
+
+
+## Nombre de un jugador de la sala.
+func name_of(peer: int) -> String:
+	return players.get(peer, {}).get("name", "?")
+
+
+# --- Partida -----------------------------------------------------------------------
+
+## Anfitrión: empieza una partida nueva con los jugadores de la sala (+ IA) en orden aleatorio.
+func start_match() -> void:
+	if not is_host():
+		return
+	var entries := []
+	for peer in player_order:
+		entries.append({"name": name_of(peer), "peer": peer})
+	var ai := 1
+	while entries.size() < MatchSeries.SLOTS:
+		entries.append({"name": "IA %d" % ai, "peer": 0})
+		ai += 1
+	entries.shuffle()
+	in_game = true
+	GameManager.series = MatchSeries.new(entries)
+	load_round()
+
+
+## Anfitrión: carga la ronda actual de GameManager.series en todos los dispositivos.
+func load_round() -> void:
+	if not is_host():
+		return
+	var setup := {
+		"series": GameManager.series.to_dict(),
+		"seed": randi(),
+		"difficulty": GameManager.difficulty,
+		"prep_time": GameManager.config.prep_time,
+		"match_duration": GameManager.config.match_duration,
+	}
+	_ready_peers = {}
+	_load_round.rpc(setup)
+
+
+@rpc("authority", "call_local", "reliable")
+func _load_round(setup: Dictionary) -> void:
+	in_game = true
+	if not is_host():
+		GameManager.series = MatchSeries.from_dict(setup["series"])
+		GameManager.config.prep_time = setup["prep_time"]
+		GameManager.config.match_duration = setup["match_duration"]
+	GameManager.round_setup = setup
+	get_tree().change_scene_to_file(GameManager.MATCH_SCENE)
+
+
+## Cliente: la escena de la ronda ya está cargada.
+func report_round_ready() -> void:
+	if is_client():
+		_client_round_ready.rpc_id(1)
+
+
+@rpc("any_peer", "reliable")
+func _client_round_ready() -> void:
+	if is_host():
+		_ready_peers[multiplayer.get_remote_sender_id()] = true
+
+
+## Clientes conectados que ya tienen la ronda cargada.
+func ready_peers() -> Array:
+	var out := []
+	for peer in multiplayer.get_peers():
+		if _ready_peers.has(peer):
+			out.append(peer)
+	return out
+
+
+func all_clients_ready() -> bool:
+	for peer in multiplayer.get_peers():
+		if not _ready_peers.has(peer):
+			return false
+	return true
+
+
+## Anfitrión: todos vuelven a la sala de espera.
+func back_to_lobby() -> void:
+	if is_host():
+		_back_to_lobby.rpc()
+
+
+@rpc("authority", "call_local", "reliable")
+func _back_to_lobby() -> void:
+	in_game = false
+	GameManager.series = null
+	GameManager.round_setup = {}
+	get_tree().change_scene_to_file(LOBBY_SCENE)
+
+
+# --- Conexiones ------------------------------------------------------------------
+
+func _on_peer_connected(peer: int) -> void:
+	if not is_host():
+		return
+	# La partida ya ha empezado o la sala está llena: se rechaza.
+	if in_game or players.size() >= MAX_PLAYERS:
+		_rejected.rpc_id(peer, "La partida ya ha empezado." if in_game else "La sala está llena.")
+		get_tree().create_timer(0.3).timeout.connect(func() -> void:
+			if is_host() and peer in multiplayer.get_peers():
+				(multiplayer.multiplayer_peer as ENetMultiplayerPeer).disconnect_peer(peer))
+
+
+func _on_peer_disconnected(peer: int) -> void:
+	if not is_host():
+		return
+	if players.has(peer):
+		players.erase(peer)
+		player_order.erase(peer)
+		_ready_peers.erase(peer)
+		_send_lobby()
+		player_left.emit(peer)
+
+
+func _on_connected_to_server() -> void:
+	_register.rpc_id(1, player_name, PROTOCOL)
+
+
+func _on_connection_failed() -> void:
+	leave()
+	join_failed.emit()
+
+
+func _on_server_disconnected() -> void:
+	leave()
+	session_ended.emit("Se ha perdido la conexión con el anfitrión.")
+
+
+@rpc("any_peer", "reliable")
+func _register(name: String, protocol: int) -> void:
+	if not is_host():
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	if protocol != PROTOCOL:
+		_rejected.rpc_id(peer, "Versión del juego distinta a la del anfitrión.")
+		return
+	if in_game or players.size() >= MAX_PLAYERS:
+		return
+	players[peer] = {"name": _unique_name(name)}
+	player_order.append(peer)
+	_send_lobby()
+
+
+@rpc("authority", "reliable")
+func _rejected(reason: String) -> void:
+	leave()
+	session_ended.emit(reason)
+
+
+func _send_lobby() -> void:
+	_lobby_state.rpc(players, player_order, room_name)
+	lobby_changed.emit()
+
+
+@rpc("authority", "reliable")
+func _lobby_state(new_players: Dictionary, order: Array, new_room_name: String) -> void:
+	var first := players.is_empty()
+	players = new_players
+	player_order = order
+	room_name = new_room_name
+	lobby_changed.emit()
+	if first:
+		joined.emit()
+
+
+func _unique_name(wanted: String) -> String:
+	var base := wanted.strip_edges().left(14)
+	if base == "":
+		base = "Jugador"
+	var taken := []
+	for peer in players:
+		taken.append(players[peer]["name"])
+	var candidate := base
+	var n := 2
+	while candidate in taken:
+		candidate = "%s %d" % [base, n]
+		n += 1
+	return candidate
+
+
+# --- Descubrimiento de salas (LAN) -------------------------------------------------
+
+func start_discovery() -> void:
+	stop_discovery()
+	rooms = {}
+	_listen = PacketPeerUDP.new()
+	_listen.set_broadcast_enabled(true)
+	var err := _listen.bind(DISCOVERY_PORT)
+	if err != OK:
+		# Otro programa (p. ej. otra copia del juego en este ordenador) ya escucha: solo IP manual.
+		push_warning("No se pueden buscar salas en el puerto %d (%s)" % [DISCOVERY_PORT, error_string(err)])
+		_listen = null
+	rooms_changed.emit()
+
+
+func stop_discovery() -> void:
+	if _listen:
+		_listen.close()
+		_listen = null
+
+
+func is_discovering() -> bool:
+	return _listen != null
+
+
+func _send_announce() -> void:
+	var data := JSON.stringify({
+		"game": GAME_TAG, "v": PROTOCOL, "name": room_name, "players": players.size(), "port": PORT,
+	}).to_utf8_buffer()
+	var targets := ["255.255.255.255"]
+	for ip in local_ips():
+		# Difusión de la subred (suponiendo /24, lo habitual en una WiFi doméstica).
+		var parts := ip.split(".")
+		targets.append("%s.%s.%s.255" % [parts[0], parts[1], parts[2]])
+	for target in targets:
+		_announce.set_dest_address(target, DISCOVERY_PORT)
+		_announce.put_packet(data)
+
+
+func _poll_discovery() -> void:
+	var changed := false
+	while _listen.get_available_packet_count() > 0:
+		var packet := _listen.get_packet()
+		var ip := _listen.get_packet_ip()
+		var info: Variant = JSON.parse_string(packet.get_string_from_utf8())
+		if not info is Dictionary or info.get("game") != GAME_TAG or int(info.get("v", 0)) != PROTOCOL:
+			continue
+		changed = changed or not rooms.has(ip)
+		rooms[ip] = {"name": String(info.get("name", ip)), "players": int(info.get("players", 0)), "port": int(info.get("port", PORT)), "seen": Time.get_ticks_msec()}
+	var now := Time.get_ticks_msec()
+	for ip in rooms.keys():
+		if now - int(rooms[ip]["seen"]) > ROOM_TIMEOUT * 1000.0:
+			rooms.erase(ip)
+			changed = true
+	if changed:
+		rooms_changed.emit()
+
+
+# --- Ajustes ---------------------------------------------------------------------
+
+func _load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		player_name = String(cfg.get_value("jugador", "nombre", ""))
+	if player_name == "":
+		player_name = "Jugador"
+
+
+func _save_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)
+	cfg.set_value("jugador", "nombre", player_name)
+	cfg.save(SETTINGS_PATH)
+
+
+static func _is_172_private(address: String) -> bool:
+	if not address.begins_with("172."):
+		return false
+	var second := address.split(".")[1].to_int()
+	return second >= 16 and second <= 31

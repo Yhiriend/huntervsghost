@@ -39,10 +39,11 @@ func place(c: CharacterBase, room: Room) -> void:
 
 func run() -> void:
 	GameManager.selected_role = DummySpawn.Role.GHOST
+	GameManager.series = null
 	var m: MatchScenario = load("res://scenes/game/Match.tscn").instantiate()
 	add_child(m)
 	await frames(5)
-	var ghost: Ghost = get_tree().get_nodes_in_group("ghosts")[0]
+	var ghost: Ghost = m.get_controlled_character() as Ghost
 	var hunter: Hunter = get_tree().get_nodes_in_group("hunters")[0]
 	hunter.frozen = true
 	var rooms := m.get_node("House/Rooms")
@@ -120,6 +121,7 @@ func run() -> void:
 	m.queue_free()
 	await frames(3)
 	GameManager.selected_role = DummySpawn.Role.HUNTER
+	GameManager.series = null
 	m = load("res://scenes/game/Match.tscn").instantiate()
 	add_child(m)
 	await frames(5)

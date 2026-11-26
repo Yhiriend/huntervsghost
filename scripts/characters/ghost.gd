@@ -143,6 +143,24 @@ func _process_actions(delta: float) -> void:
 			_net_visual.visible = net_time_left > BLINK_WARNING_TIME or fmod(net_time_left, 0.3) > 0.12
 
 
+## Cliente de red: aplica el estado que manda el anfitrión (con sus sonidos y señales).
+func net_apply_state(new_state: State, spot: HidingSpot, net_time: float) -> void:
+	if hiding_spot and hiding_spot.occupant == self:
+		hiding_spot.occupant = null
+	hiding_spot = spot
+	if spot:
+		spot.occupant = self
+	net_time_left = net_time
+	_set_state(new_state)
+
+
+func _puppet_process(delta: float) -> void:
+	super(delta)
+	if state == State.NETTED:
+		net_time_left = maxf(0.0, net_time_left - delta)
+		_net_visual.visible = net_time_left > BLINK_WARNING_TIME or fmod(net_time_left, 0.3) > 0.12
+
+
 func _apply_movement(delta: float) -> void:
 	if state == State.HIDDEN:
 		return  # Dentro del armario: sin física (la colisión está desactivada).

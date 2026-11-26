@@ -31,6 +31,8 @@ const COLUMNS: PackedStringArray = [
 	"ronda",
 	"marcador",
 	"resultado_serie",
+	"modo",
+	"puntos",
 ]
 
 

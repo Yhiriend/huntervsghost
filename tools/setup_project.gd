@@ -10,6 +10,7 @@ func _init() -> void:
 	ProjectSettings.set_setting("autoload/GameManager", "*res://scripts/autoload/game_manager.gd")
 	ProjectSettings.set_setting("autoload/DebugOverlay", "*res://scripts/ui/debug_overlay.gd")
 	ProjectSettings.set_setting("autoload/Audio", "*res://scripts/autoload/audio_manager.gd")
+	ProjectSettings.set_setting("autoload/Net", "*res://scripts/autoload/net_manager.gd")
 	ProjectSettings.set_setting("application/run/main_scene", "res://scenes/main/MainMenu.tscn")
 	ProjectSettings.set_setting("application/config/name", "Cazador o Presa")
 	ProjectSettings.set_setting("layer_names/3d_physics/layer_1", "world")

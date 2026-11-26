@@ -52,6 +52,7 @@ func _ready() -> void:
 func run() -> void:
 	# Partida como Hunter: Ghosts con IA.
 	GameManager.selected_role = DummySpawn.Role.HUNTER
+	GameManager.series = null
 	var m := await load_scene("res://scenes/game/Match.tscn")
 	var ghosts := get_tree().get_nodes_in_group("ghosts")
 	check(ghosts.all(func(g): return g.controller is GhostAI), "Partida como Hunter: los Ghosts los controla GhostAI")
@@ -66,6 +67,7 @@ func run() -> void:
 
 	# Partida como Ghost: Hunter con IA.
 	GameManager.selected_role = DummySpawn.Role.GHOST
+	GameManager.series = null
 	m = await load_scene("res://scenes/game/Match.tscn")
 	var hunter: Hunter = get_tree().get_nodes_in_group("hunters")[0]
 	check(hunter.controller is HunterAI, "Partida como Ghost: el Hunter lo controla HunterAI")

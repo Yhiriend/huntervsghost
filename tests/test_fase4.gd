@@ -25,10 +25,18 @@ func clear() -> void:
 func start_match(role: int) -> MatchScenario:
 	await clear()
 	GameManager.selected_role = role
+	GameManager.series = null
 	var m: MatchScenario = load("res://scenes/game/Match.tscn").instantiate()
 	add_child(m)
 	await frames(3)
 	return m
+
+
+func player_ghost() -> Ghost:
+	for g in get_tree().get_nodes_in_group("ghosts"):
+		if (g as Ghost).is_player_controlled:
+			return g
+	return null
 
 
 func csv_lines() -> PackedStringArray:
@@ -69,7 +77,7 @@ func run() -> void:
 	var m := await start_match(DummySpawn.Role.HUNTER)
 	var hunters := get_tree().get_nodes_in_group("hunters")
 	var ghosts := get_tree().get_nodes_in_group("ghosts")
-	check(hunters.size() == 1 and ghosts.size() == 2, "Hunter vs 2 Ghosts")
+	check(hunters.size() == 1 and ghosts.size() == 3, "Cazador vs 3 Presas")
 	var hunter: Hunter = hunters[0]
 	check(m.phase == MatchScenario.Phase.PREP and hunter.frozen, "Preparación: Hunter congelado")
 	check(m._hud._blackout.visible, "Preparación: pantalla negra para el Hunter")
@@ -91,14 +99,14 @@ func run() -> void:
 	var lines := csv_lines()
 	check(lines.size() == 2 and lines[0].begins_with("fecha,rol_jugador,ganador"), "CSV con cabecera y una fila")
 	check(lines.size() == 2 and ",hunter,hunter," in lines[1] and lines[1].contains(",4,,normal,"), "Fila: rol hunter, gana hunter, diversión 4 (ronda intermedia: sin jugar otra)")
-	check(lines.size() == 2 and lines[1].split(",")[6] == "1" and lines[1].split(",")[7] == "2", "Fila: 1 red disparada, 2 acertadas (%s)" % (lines[1] if lines.size() == 2 else ""))
+	check(lines.size() == 2 and lines[1].split(",")[6] == "1" and lines[1].split(",")[7] == "3", "Fila: 1 red disparada, 3 acertadas (%s)" % (lines[1] if lines.size() == 2 else ""))
 
 	# ---- Partida como Ghost: gana si se acaba el tiempo ----
 	m = await start_match(DummySpawn.Role.GHOST)
 	ghosts = get_tree().get_nodes_in_group("ghosts")
 	hunters = get_tree().get_nodes_in_group("hunters")
-	check(ghosts.size() == 1 and hunters.size() == 1, "Ghost vs 1 Hunter")
-	var ghost: Ghost = ghosts[0]
+	check(ghosts.size() == 3 and hunters.size() == 1, "Presa (con 2 Presas IA) vs 1 Cazador")
+	var ghost: Ghost = player_ghost()
 	check(ghost.is_player_controlled and not hunters[0].is_player_controlled, "El jugador es el Ghost")
 	check(not m._hud._blackout.visible, "Jugando como Ghost no hay pantalla negra")
 	ghost.enter_hiding(get_tree().get_nodes_in_group("hiding_spots")[2])
@@ -112,9 +120,16 @@ func run() -> void:
 	var aim_error := cfg.ai_aim_error
 	cfg.ai_aim_error = 0.0
 	m = await start_match(DummySpawn.Role.GHOST)
-	ghost = get_tree().get_nodes_in_group("ghosts")[0]
+	ghost = player_ghost()
 	hunter = get_tree().get_nodes_in_group("hunters")[0]
 	await frames(65)
+	# Las otras dos Presas (IA) ya están capturadas: solo queda la del jugador.
+	for g in get_tree().get_nodes_in_group("ghosts"):
+		if g != ghost:
+			if (g as Ghost).state == Ghost.State.HIDDEN:
+				(g as Ghost).expel_from_hiding()
+			(g as Ghost).state = Ghost.State.NETTED
+			(g as Ghost).capture()
 	# Delante del Hunter, a 4 m, en el pasillo.
 	var forward := -hunter.global_basis.z
 	ghost.global_position = hunter.global_position + Vector3(forward.x, 0, forward.z).normalized() * 4.0

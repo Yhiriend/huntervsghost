@@ -57,6 +57,7 @@ var _fire_index := -1
 var _action_index := -1
 var _mouse_down := false
 var _scenario_bar: HBoxContainer
+var _camera_button: Button
 
 
 ## Devuelve true una vez por cada pulsación del botón RED.
@@ -95,6 +96,16 @@ func _ready() -> void:
 	_scenario_bar.add_child(_make_action_button("Cambiar", "switch_character"))
 	_scenario_bar.add_child(_make_action_button("Espectador", "spectate"))
 	_scenario_bar.add_child(_make_action_button("Reiniciar", "reset_scenario"))
+	# Espectador en una partida (desempate o Presa capturada): cambiar a quién se mira.
+	_camera_button = _make_action_button("Cambiar cámara", "switch_character")
+	_camera_button.custom_minimum_size = Vector2(170, 46)
+	_camera_button.anchor_left = 1.0
+	_camera_button.anchor_right = 1.0
+	_camera_button.offset_left = -182.0
+	_camera_button.offset_right = -12.0
+	_camera_button.offset_top = 64.0
+	_camera_button.visible = false
+	add_child(_camera_button)
 	clear_state()
 
 
@@ -105,6 +116,11 @@ func _exit_tree() -> void:
 ## Botones Cambiar / Espectador / Reiniciar (solo en escenarios de prueba).
 func set_scenario_buttons(enabled: bool) -> void:
 	_scenario_bar.visible = enabled
+
+
+## Botón "Cambiar cámara" (espectador en una partida).
+func set_camera_button(enabled: bool) -> void:
+	_camera_button.visible = enabled and not _scenario_bar.visible
 
 
 func set_controls_enabled(enabled: bool) -> void:

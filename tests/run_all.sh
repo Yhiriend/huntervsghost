@@ -7,7 +7,10 @@ cd "$(dirname "$0")/.." || exit 1
 total=0
 for scene in tests/test_*.tscn; do
 	# Límite de 120 s por prueba (macOS no trae "timeout"): un error de sintaxis deja Godot colgado.
-	out=$(perl -e 'alarm shift; exec @ARGV' 120 "$GODOT" --headless --fixed-fps 60 --path . "res://$scene" 2>&1)
+	# Las pruebas de red (test_red*) van en tiempo real: con --fixed-fps los frames no esperan
+	# al reloj y las conexiones no llegan a tiempo.
+	case "$scene" in *test_red*) fps="" ;; *) fps="--fixed-fps 60" ;; esac
+	out=$(perl -e 'alarm shift; exec @ARGV' 150 "$GODOT" --headless $fps --path . "res://$scene" 2>&1)
 	echo "$out" | grep -E "^FAIL|SCRIPT ERROR|Parse Error|TIMEOUT"
 	result=$(echo "$out" | grep "RESULT" | tail -1)
 	echo "== $(basename "$scene" .tscn): ${result:-SIN RESULTADO}"

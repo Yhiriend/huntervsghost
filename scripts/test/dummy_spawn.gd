@@ -7,7 +7,8 @@ extends Marker3D
 enum Role { HUNTER, GHOST }
 ## STATIC: quieto. ROUTE: recorre en bucle los puntos de un Path3D (abre las puertas que encuentre).
 ## AI: lo controla la inteligencia artificial (HunterAI / GhostAI).
-enum Behavior { STATIC, ROUTE, AI }
+## NETWORK: jugador remoto (en el anfitrión). PUPPET: copia de lo que manda el anfitrión (cliente).
+enum Behavior { STATIC, ROUTE, AI, NETWORK, PUPPET }
 
 @export var role: Role = Role.GHOST
 @export var behavior: Behavior = Behavior.STATIC
@@ -23,3 +24,8 @@ enum Behavior { STATIC, ROUTE, AI }
 @export var start_hidden_in: String = ""
 ## El jugador empieza controlando este personaje.
 @export var player_start: bool = false
+## Nombre que se muestra sobre el personaje (vacío = el de la escena: CAZADOR / PRESA).
+@export var display_name: String = ""
+## Red: jugador que lo controla (NETWORK) y etiqueta bajo el nombre (PUPPET: "IA", "TÚ"...).
+var net_peer: int = 0
+var net_tag: String = ""

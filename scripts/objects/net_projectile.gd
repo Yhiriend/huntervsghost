@@ -3,6 +3,9 @@ extends Node3D
 ## Red disparada por el Hunter. Avanza en línea recta hasta net_range.
 ## Se detiene en paredes y muebles altos; inmoviliza al primer Ghost libre que toque.
 ## Usa rayos en lugar de un cuerpo físico para no atravesar paredes a alta velocidad.
+## En un cliente de red es solo visual (visual_only): vuela recta y la termina el anfitrión.
+
+signal finished(at: Vector3, hit_ghost: bool)
 
 ## Altura de vuelo: pasa por encima de sofás y mesas bajas, choca con encimeras (1 m) y paredes.
 const FLIGHT_HEIGHT := 0.95
@@ -13,6 +16,7 @@ var _shooter: CharacterBase
 var _direction := Vector3.FORWARD
 var _travelled: float = 0.0
 var _finished: bool = false
+var visual_only: bool = false
 
 
 func _ready() -> void:
@@ -28,6 +32,10 @@ func _ready() -> void:
 	var visual := MeshInstance3D.new()
 	visual.mesh = mesh
 	add_child(visual)
+
+
+func get_direction() -> Vector3:
+	return _direction
 
 
 ## Llamar justo después de añadir el nodo al árbol.
@@ -53,6 +61,16 @@ func _physics_process(delta: float) -> void:
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
 		wall_fraction = from.distance_to(hit.position) / maxf(step, 0.0001)
+
+	if visual_only:
+		# Se detiene en la pared (para que no la atraviese mientras llega el final del anfitrión).
+		if wall_fraction >= 1.0:
+			global_position = to
+			_travelled += step
+		elif _travelled < cfg.net_range:
+			global_position = from.lerp(to, wall_fraction)
+			_travelled = cfg.net_range
+		return
 
 	# 2) ¿Toca a algún Ghost libre antes que la pared?
 	var ghost_hit: Ghost = null
@@ -92,8 +110,14 @@ func _segment_hit_fraction(from: Vector3, to: Vector3, ghost: Ghost, net_radius:
 	return t
 
 
+func finish(at: Vector3, hit_ghost: bool) -> void:
+	if not _finished:
+		_finish(at, hit_ghost)
+
+
 func _finish(at: Vector3, hit_ghost: bool) -> void:
 	_finished = true
+	finished.emit(at, hit_ghost)
 	global_position = at
 	Audio.play_at("net_hit" if hit_ghost else "net_miss", at, 10.0 if hit_ghost else 6.0)
 	var tween := create_tween()

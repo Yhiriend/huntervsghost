@@ -41,9 +41,9 @@ func interact(actor: CharacterBase) -> void:
 	set_open(not is_open, actor)
 
 
-## Devuelve false si no se pudo (alguien en el hueco al cerrar).
-func set_open(value: bool, actor: CharacterBase = null, animate: bool = true) -> bool:
-	if not value and is_doorway_occupied():
+## Devuelve false si no se pudo (alguien en el hueco al cerrar). force: sin comprobarlo (red).
+func set_open(value: bool, actor: CharacterBase = null, animate: bool = true, force: bool = false) -> bool:
+	if not value and not force and is_doorway_occupied():
 		return false
 	var changed := value != is_open
 	is_open = value

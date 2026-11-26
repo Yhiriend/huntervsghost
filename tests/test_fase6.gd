@@ -61,6 +61,7 @@ func run() -> void:
 	cfg.prep_time = 0.5
 	cfg.match_duration = 2.0
 	GameManager.selected_role = DummySpawn.Role.GHOST
+	GameManager.series = null
 	var m: MatchScenario = load("res://scenes/game/Match.tscn").instantiate()
 	add_child(m)
 	await frames(3)

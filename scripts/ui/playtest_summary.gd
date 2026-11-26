@@ -88,14 +88,16 @@ static func build_report(rows: Array[Dictionary]) -> String:
 		"suerte %s · injusto %s" % [_pct_text(_percent(by, func(r): return r.get("resultado_por") == "suerte")), _pct_text(_percent(by, func(r): return r.get("resultado_por") == "injusto"))]))
 	out.append("")
 
-	# --- Series de rondas ---
-	var series_rows := finished.filter(func(r): return String(r.get("resultado_serie", "")) != "")
+	# --- Partidas completas (4 jugadores, puntos individuales) ---
+	var series_rows := finished.filter(func(r): return String(r.get("resultado_serie", "")) != "" and String(r.get("modo", "")) != "")
 	if not series_rows.is_empty():
-		out.append("[b]PARTIDAS POR RONDAS[/b]  (%d terminadas)" % series_rows.size())
-		out.append(_line("Partidas ganadas por ti", _percent(series_rows, func(r): return r.get("resultado_serie") == "gana_jugador"), 40.0, 60.0,
-			"empates %s" % _pct_text(_percent(series_rows, func(r): return r.get("resultado_serie") == "empate"))))
-		var rounds := _numbers(series_rows, "ronda")
-		out.append(_line_value("Rondas por partida", "%.1f" % _avg(rounds), rounds.size(), _avg(rounds) > 3.0, "3 = paliza; 4 o más = partidas igualadas."))
+		out.append("[b]PARTIDAS COMPLETAS[/b]  (%d terminadas)" % series_rows.size())
+		out.append(_line("Partidas ganadas por ti", _percent(series_rows, func(r): return r.get("resultado_serie") == "gana_jugador"), 15.0, 45.0,
+			"Sois 4: lo esperado ronda el 25 %%. Empates %s" % _pct_text(_percent(series_rows, func(r): return r.get("resultado_serie") == "empate"))))
+		out.append(_line("Partidas con desempate", _percent(series_rows, func(r): return float(r.get("ronda", "0")) > MatchSeries.SLOTS), 0.0, 35.0,
+			"Algún desempate es emocionante; muchos alargan demasiado."))
+		var online := series_rows.filter(func(r): return r.get("modo") != "solo")
+		out.append("  Partidas en red: %d" % online.size())
 		out.append("")
 
 	# --- Por bando ---

@@ -13,8 +13,16 @@ var config: GameConfig = _load_config()
 
 ## Bando del jugador en la próxima partida (DummySpawn.Role: 0 = Hunter, 1 = Ghost).
 var selected_role: int = 0
-## Serie de rondas en curso (null fuera de una partida).
+## Partida en curso (null fuera de una partida).
 var series: MatchSeries
+## Datos de la ronda que se va a cargar (semilla, dificultad...). Vacío = se generan al cargar.
+var round_setup: Dictionary = {}
+## Red: en el anfitrión recibe cada ruido para reenviarlo; en un cliente los ruidos solo
+## llegan del anfitrión.
+var noise_hook: Callable
+var remote_noise: bool = false
+## Aviso para mostrar al volver al menú (p. ej. "Se ha perdido la conexión").
+var notice: String = ""
 
 enum Difficulty { EASY, NORMAL, HARD }
 const DIFFICULTY_NAMES := ["facil", "normal", "dificil"]
@@ -89,15 +97,20 @@ func get_difficulty_name() -> String:
 	return DIFFICULTY_NAMES[difficulty]
 
 
-## Empieza una serie de rondas (MatchSeries) con el jugador en el bando indicado.
+## Partida en solitario contra 3 IA. role: bando del jugador en la primera ronda.
 func start_match(role: int) -> void:
+	Net.leave()
 	selected_role = role
-	series = MatchSeries.new(role)
+	series = MatchSeries.solo(Net.player_name, role == DummySpawn.Role.HUNTER)
+	round_setup = {}
 	get_tree().change_scene_to_file(MATCH_SCENE)
 
 
+## Vuelve al menú principal (sale también de la sala de red).
 func go_to_menu() -> void:
 	series = null
+	round_setup = {}
+	Net.leave()
 	get_tree().change_scene_to_file(MENU_SCENE)
 
 
@@ -118,5 +131,8 @@ func save_config() -> Error:
 
 ## Punto único para generar ruido (pasos, puertas, interruptores, armarios).
 func make_noise(position: Vector3, radius: float, source: Node) -> void:
-	if config.noise_enabled and radius > 0.0:
-		noise_made.emit(position, radius, source)
+	if remote_noise or not config.noise_enabled or radius <= 0.0:
+		return
+	if noise_hook.is_valid():
+		noise_hook.call(position, radius, source)
+	noise_made.emit(position, radius, source)

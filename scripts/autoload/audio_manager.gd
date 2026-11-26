@@ -16,6 +16,13 @@ const SFX_BUS := "SFX"
 ## Variación aleatoria de tono para que los sonidos repetidos (pasos) no suenen idénticos.
 const PITCH_VARIATION := 0.08
 
+## Red: en el anfitrión recibe cada sonido del mundo para reenviarlo a los clientes.
+var world_sound_hook: Callable
+## Red: en un cliente, los sonidos del mundo solo llegan del anfitrión (los locales se ignoran).
+var remote_world_sounds: bool = false
+## Sonidos recibidos del anfitrión (para las pruebas).
+var net_sounds_received: int = 0
+
 var _streams: Dictionary = {}
 var _music: AudioStreamPlayer
 
@@ -70,7 +77,13 @@ func play(sound: String, volume_db: float = 0.0) -> void:
 
 
 ## Efecto situado en el mundo; solo se oye a menos de max_distance metros del oyente.
-func play_at(sound: String, position: Vector3, max_distance: float, volume_db: float = 0.0, vary_pitch: bool = true) -> void:
+func play_at(sound: String, position: Vector3, max_distance: float, volume_db: float = 0.0, vary_pitch: bool = true, from_net: bool = false) -> void:
+	if remote_world_sounds and not from_net:
+		return
+	if from_net:
+		net_sounds_received += 1
+	if world_sound_hook.is_valid():
+		world_sound_hook.call(sound, position, max_distance, volume_db, vary_pitch)
 	var stream := _get_stream(sound)
 	var scene := get_tree().current_scene
 	if stream == null or scene == null or not scene is Node3D:

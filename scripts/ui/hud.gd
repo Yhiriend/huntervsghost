@@ -20,6 +20,8 @@ var _message_time_left: float = 0.0
 var touch: TouchControls
 ## Muestra en táctil los botones Cambiar / Espectador / Reiniciar.
 var scenario_buttons: bool = false
+## Muestra en táctil el botón "Cambiar cámara" (espectador en una partida).
+var camera_button: bool = false
 
 
 func _ready() -> void:
@@ -57,6 +59,7 @@ func _process(delta: float) -> void:
 	_update_ghost_count()
 	touch.visible = GameManager.is_touch_mode()
 	touch.set_scenario_buttons(scenario_buttons)
+	touch.set_camera_button(camera_button)
 	touch.show_fire = false
 	touch.action_text = ""
 	touch.action_progress = -1.0
@@ -105,7 +108,7 @@ func _update_status() -> void:
 			Ghost.State.HIDDEN:
 				_status_label.text = "Escondido en el armario"
 			Ghost.State.CAPTURED:
-				_status_label.text = "Capturado (Tab para cambiar de personaje)"
+				_status_label.text = "Capturado (Tab: mirar a otro personaje)"
 
 	_update_interaction_prompt()
 

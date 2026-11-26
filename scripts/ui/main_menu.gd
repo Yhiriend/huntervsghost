@@ -35,11 +35,11 @@ func _ready() -> void:
 	var tests := _column()
 	columns.add_child(tests)
 
-	var cfg := GameManager.config
 	play.add_child(_label("Partida", 16, Color(0.8, 0.8, 0.85)))
-	play.add_child(_button("Jugar como CAZADOR  (vs %d Presas)" % cfg.ghost_count, func() -> void: GameManager.start_match(DummySpawn.Role.HUNTER), Color(1.0, 0.6, 0.25)))
-	play.add_child(_button("Jugar como PRESA  (vs 1 Cazador)", func() -> void: GameManager.start_match(DummySpawn.Role.GHOST), Color(0.45, 0.85, 1.0)))
+	play.add_child(_button("Contra la IA · empiezas de CAZADOR", func() -> void: GameManager.start_match(DummySpawn.Role.HUNTER), Color(1.0, 0.6, 0.25)))
+	play.add_child(_button("Contra la IA · empiezas de PRESA", func() -> void: GameManager.start_match(DummySpawn.Role.GHOST), Color(0.45, 0.85, 1.0)))
 	play.add_child(_difficulty_row())
+	play.add_child(_button("Multijugador (red local)", func() -> void: get_tree().change_scene_to_file("res://scenes/main/Lobby.tscn"), Color(0.8, 0.6, 1.0)))
 	play.add_child(_spacer(8))
 	play.add_child(_button("Resultados de las pruebas", func() -> void: get_tree().change_scene_to_file("res://scenes/main/PlaytestSummary.tscn"), Color(0.7, 1.0, 0.7)))
 	play.add_child(_button("Salir", func() -> void: get_tree().quit()))
@@ -50,6 +50,9 @@ func _ready() -> void:
 		var path: String = entry[1]
 		tests.add_child(_button(entry[0], func() -> void: get_tree().change_scene_to_file(path)))
 
+	if GameManager.notice != "":
+		page.add_child(_label(GameManager.notice, 16, Color(1.0, 0.75, 0.45)))
+		GameManager.notice = ""
 	page.add_child(_spacer(10))
 	page.add_child(_label("Música: \"Mystery & Crime Background Music\" — Oak Hill", 13, Color(0.55, 0.55, 0.65)))
 

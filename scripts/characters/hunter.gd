@@ -15,6 +15,8 @@ var net_cooldown_left: float = 0.0
 var capture_target: Ghost = null
 ## Segundos acumulados manteniendo la captura.
 var capture_progress: float = 0.0
+## Última red disparada (para seguirla en red).
+var last_net: NetProjectile
 
 var _aim_marker: MeshInstance3D
 var _aim_material: StandardMaterial3D
@@ -121,9 +123,15 @@ func fire_net() -> void:
 	var net := NetProjectile.new()
 	get_parent().add_child(net)
 	net.launch(self, dir)
+	last_net = net
 	Audio.play_at("net_fire", global_position, 10.0)
 	net_cooldown_left = GameManager.config.net_cooldown
 	net_fired.emit(self)
+
+
+func _puppet_process(delta: float) -> void:
+	super(delta)
+	_update_aim_marker()
 
 
 func _update_capture(delta: float) -> void:

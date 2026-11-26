@@ -152,6 +152,8 @@ func _spawn_character(spawn: DummySpawn) -> Entry:
 	var scene := HUNTER_SCENE if spawn.role == DummySpawn.Role.HUNTER else GHOST_SCENE
 	var character := scene.instantiate() as CharacterBase
 	character.name = spawn.name
+	if spawn.display_name != "":
+		character.display_name = spawn.display_name
 	_characters_root.add_child(character)
 	character.global_transform = spawn.global_transform
 
@@ -160,6 +162,20 @@ func _spawn_character(spawn: DummySpawn) -> Entry:
 		fallback = HunterAI.new() if character is Hunter else GhostAI.new()
 		fallback.name = "AI"
 		character.add_child(fallback)
+	elif spawn.behavior == DummySpawn.Behavior.NETWORK:
+		var remote := NetInputController.new()
+		remote.name = "NetInput"
+		remote.peer = spawn.net_peer
+		character.add_child(remote)
+		fallback = remote
+	elif spawn.behavior == DummySpawn.Behavior.PUPPET:
+		var puppet := NetPuppetController.new()
+		puppet.name = "NetPuppet"
+		puppet.tag = spawn.net_tag
+		character.add_child(puppet)
+		fallback = puppet
+		character.net_puppet = true
+		character.set_net_target(spawn.global_position, spawn.global_rotation.y, true)
 	else:
 		var dummy := DummyController.new()
 		dummy.name = "DummyController"
@@ -202,8 +218,12 @@ func _spectate(index: int, snap_camera: bool = false) -> void:
 	_watched = index
 	_camera_rig.set_target(_entries[index].character, snap_camera)
 	_hud.set_controlled(null)
-	_hud.show_message("Espectador: %s  (Tab cambia de cámara, P para controlarlo)" % _entries[index].character.name, 3.0)
+	_hud.show_message(_spectate_text(_entries[index].character), 3.0)
 	_update_player_visibility()
+
+
+func _spectate_text(character: CharacterBase) -> String:
+	return "Espectador: %s  (Tab cambia de cámara, P para controlarlo)" % character.display_name
 
 
 ## Jugando como Hunter, cada Ghost solo se dibuja si el Hunter lo ve.
