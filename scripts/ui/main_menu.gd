@@ -8,6 +8,8 @@ const TEST_SCENES := [
 	["TestAI · IA contra IA (espectador)", "res://scenes/test/TestAI.tscn"],
 ]
 
+var _notice: Label
+
 
 func _ready() -> void:
 	var background := ColorRect.new()
@@ -40,6 +42,9 @@ func _ready() -> void:
 	play.add_child(_button("Contra la IA · empiezas de PRESA", func() -> void: GameManager.start_match(DummySpawn.Role.GHOST), Color(0.45, 0.85, 1.0)))
 	play.add_child(_difficulty_row())
 	play.add_child(_button("Multijugador (red local)", func() -> void: get_tree().change_scene_to_file("res://scenes/main/Lobby.tscn"), Color(0.8, 0.6, 1.0)))
+	# Pasar el juego a otros: comparte el APK instalado por WhatsApp (solo en Android).
+	if ApkShare.is_available():
+		play.add_child(_button("Compartir el juego por WhatsApp", _share_apk, Color(0.45, 0.95, 0.55)))
 	play.add_child(_spacer(8))
 	play.add_child(_button("Resultados de las pruebas", func() -> void: get_tree().change_scene_to_file("res://scenes/main/PlaytestSummary.tscn"), Color(0.7, 1.0, 0.7)))
 	play.add_child(_button("Salir", func() -> void: get_tree().quit()))
@@ -50,11 +55,21 @@ func _ready() -> void:
 		var path: String = entry[1]
 		tests.add_child(_button(entry[0], func() -> void: get_tree().change_scene_to_file(path)))
 
-	if GameManager.notice != "":
-		page.add_child(_label(GameManager.notice, 16, Color(1.0, 0.75, 0.45)))
-		GameManager.notice = ""
+	_notice = _label(GameManager.notice, 16, Color(1.0, 0.75, 0.45))
+	_notice.visible = GameManager.notice != ""
+	page.add_child(_notice)
+	GameManager.notice = ""
 	page.add_child(_spacer(10))
 	page.add_child(_label("Música: \"Mystery & Crime Background Music\" — Oak Hill", 13, Color(0.55, 0.55, 0.65)))
+
+
+func _share_apk() -> void:
+	_notice.text = "Preparando el APK..."
+	_notice.visible = true
+	await get_tree().process_frame  # Que se vea el aviso antes de la copia (unos 30 MB la primera vez).
+	var error := ApkShare.share()
+	_notice.text = error
+	_notice.visible = error != ""
 
 
 func _column() -> VBoxContainer:
