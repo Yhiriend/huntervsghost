@@ -103,11 +103,12 @@ func _draw_debug() -> void:
 		_add_fan(center + Vector3.UP * 0.005, inner_points, color)
 	_mesh.surface_end()
 
-	# Líneas hacia los objetivos cercanos.
+	# Líneas hacia los objetivos cercanos. Solo hacia los que el jugador ya ve en pantalla:
+	# una línea hacia alguien oculto (tras una pared, en otra habitación) delataría su posición.
 	var lines: Array = []
 	for node in _character.get_vision_targets():
 		var target := node as CharacterBase
-		if target == null or not target.is_detectable():
+		if target == null or not target.is_detectable() or not target.is_visible_in_tree():
 			continue
 		if target.global_position.distance_to(_character.global_position) > radius:
 			continue

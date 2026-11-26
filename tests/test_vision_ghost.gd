@@ -126,3 +126,39 @@ func run() -> void:
 	add_child(m)
 	await frames(5)
 	check((get_tree().get_nodes_in_group("hunters")[0] as Hunter).visible, "Jugando como Hunter te ves a ti mismo")
+
+	# Las líneas de depuración de la visión no delatan a nadie oculto.
+	var me: Hunter = get_tree().get_nodes_in_group("hunters")[0]
+	me.frozen = true
+	var prey: Ghost = get_tree().get_nodes_in_group("ghosts")[0]
+	if prey.state == Ghost.State.HIDDEN:
+		prey.expel_from_hiding()
+	prey.frozen = true
+	var rooms_node := m.get_node("House/Rooms")
+	var cocina2: Room = rooms_node.get_node("Cocina")
+	var sala2: Room = rooms_node.get_node("Sala")
+	for g in get_tree().get_nodes_in_group("ghosts"):
+		if g != prey:
+			if (g as Ghost).state == Ghost.State.HIDDEN:
+				(g as Ghost).expel_from_hiding()
+			(g as Ghost).state = Ghost.State.NETTED
+			(g as Ghost).capture()
+	me.global_position = Vector3(cocina2.global_position.x, me.global_position.y, cocina2.global_position.z)
+	# Un punto de la Sala dentro del radio pero tapado por la pared.
+	var spot := Vector3.INF
+	for x in range(-12, 13):
+		for z in range(-12, 13):
+			var p := Vector3(me.global_position.x + x * 0.5, prey.global_position.y, me.global_position.z + z * 0.5)
+			if sala2.contains_point(p) and p.distance_to(me.global_position) < me.get_vision_radius() - 1.0:
+				prey.global_position = p
+				if not me.vision.can_see(prey) and spot == Vector3.INF:
+					spot = p
+	prey.global_position = spot if spot != Vector3.INF else Vector3(sala2.global_position.x, prey.global_position.y, sala2.global_position.z)
+	GameManager.debug_vision = true
+	await frames(3)
+	var near := spot != Vector3.INF
+	var mesh: ImmediateMesh = me.vision._mesh
+	check(not prey.visible and mesh.get_surface_count() == 1, "Presa oculta en el radio (%s): sin línea hacia ella, solo el cono (%d superficies)" % ["cerca" if near else "lejos", mesh.get_surface_count()])
+	prey.global_position = me.global_position + (-me.global_basis.z) * 2.0
+	await frames(3)
+	check(prey.visible and mesh.get_surface_count() == 2, "Presa a la vista: con línea")
