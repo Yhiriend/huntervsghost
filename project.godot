@@ -14,7 +14,7 @@ config/name="Cazador o Presa"
 run/main_scene="res://scenes/main/MainMenu.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "Mobile")
-config/icon="res://icon.svg"
+config/icon="res://icons/icon_1024.png"
 
 [autoload]
 
