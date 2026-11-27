@@ -84,6 +84,14 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var ai_hunter_search_chance: float = 0.35
 ## La IA Hunter patrulla caminando en sigilo (más lenta y sin ruido) y solo corre si tiene una pista.
 @export var ai_hunter_patrol_sneak: bool = true
+## La IA Presa, al esconderse, a veces elige un muro suelto en vez de un armario (0-1).
+@export_range(0.0, 1.0, 0.05) var ai_ghost_wall_chance: float = 0.5
+## Pasos "parados" oídos en el mismo sitio en tantas ocasiones distintas = señuelo sospechoso.
+@export_range(2, 5, 1) var ai_hunter_decoy_occasions: int = 2
+## Probabilidad de que la IA Cazador vaya a mirar un sitio que cree que es un señuelo (0-1).
+@export_range(0.0, 1.0, 0.05) var ai_hunter_decoy_follow_chance: float = 0.2
+## Probabilidad de asomarse por un extremo de un muro cercano al investigar (0-1).
+@export_range(0.0, 1.0, 0.05) var ai_hunter_peek_chance: float = 0.6
 ## Segundos que la IA recuerda un ruido.
 @export_range(0.5, 15.0, 0.5) var ai_noise_memory: float = 4.0
 ## Distancia a la que un Ghost IA empieza a huir del Hunter.

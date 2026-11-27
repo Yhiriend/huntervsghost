@@ -77,3 +77,32 @@ func _bake() -> void:
 	print_verbose("House: navegación lista (%d polígonos)." % mesh.get_polygon_count())
 	nav_ready = true
 	navigation_ready.emit()
+
+
+## Muros sueltos que sirven de escondite (Geometry/Hideouts): tapan la visión de frente y se
+## pueden rodear por los dos extremos. Para la IA: [{node, center, axis, half, normal}].
+func cover_walls() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var hideouts := get_node_or_null("Geometry/Hideouts")
+	if hideouts == null:
+		return out
+	for child in hideouts.get_children():
+		var box := child as CSGBox3D
+		if box == null:
+			continue
+		var along_x := box.size.x >= box.size.z
+		var axis := Vector3.RIGHT if along_x else Vector3.BACK
+		var center := box.global_position
+		center.y = global_position.y
+		out.append({
+			"node": box,
+			"center": center,
+			"axis": axis,
+			"half": (box.size.x if along_x else box.size.z) * 0.5,
+			"normal": Vector3(axis.z, 0.0, -axis.x),
+		})
+	return out
+
+
+static func find(tree: SceneTree) -> House:
+	return tree.get_first_node_in_group("house") as House

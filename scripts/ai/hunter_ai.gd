@@ -4,9 +4,12 @@ extends AIController
 ##   CAPTURE     Hay un Ghost atrapado a la vista: ir y capturarlo.
 ##   CHASE       Ve a un Ghost libre: perseguirlo y disparar (tiempo de reacción + error de puntería).
 ##   SEARCH      Registrar armarios: el que "late", o los cercanos a donde perdió/oyó a un Ghost.
-##   INVESTIGATE Ir a donde oyó un ruido o vio al Ghost por última vez y mirar alrededor.
+##   INVESTIGATE Ir a donde oyó un ruido o vio al Ghost por última vez y mirar alrededor
+##               (y a veces asomarse por un extremo de un muro suelto cercano).
 ##   PATROL      Recorrer habitaciones al azar; a veces registra armarios y enciende luces.
 ## No conoce la posición de los Ghosts: solo usa su visión y su oído.
+## Señuelos: si oye pasos "parados" en el mismo sitio en varias ocasiones distintas, sospecha que
+## es un señuelo y casi nunca deja lo que hace por ellos (ni registra armarios por esos pasos).
 
 enum State { PATROL, INVESTIGATE, CHASE, CAPTURE, SEARCH }
 
@@ -15,6 +18,17 @@ const LOOK_AROUND_TIME := 1.6
 const SEARCH_RADIUS := 5.0
 const SPOT_RESEARCH_COOLDOWN := 20.0
 const PASSING_SPOT_DISTANCE := 2.2
+## Pasos a menos de esta distancia cuentan como el mismo sitio (los pasos de alguien que corre
+## están más separados).
+const DECOY_SPOT_RADIUS := 1.2
+## Silencio mínimo entre dos ocasiones distintas en el mismo sitio.
+const DECOY_OCCASION_GAP := 1.5
+## Cuánto recuerda un sitio con pasos.
+const DECOY_MEMORY := 90.0
+const PEEK_TIME := 1.0
+const PEEK_COOLDOWN := 20.0
+## Distancia, desde el extremo del muro, a la que se asoma.
+const PEEK_OFFSET := 0.9
 
 var state: State = State.PATROL
 var hunter: Hunter
@@ -30,6 +44,15 @@ var _search_hold: float = 0.0
 ## HidingSpot -> momento en que se registró o se decidió no registrar.
 var _spot_memory: Dictionary = {}
 var _last_room: Room = null
+## Sitios donde oyó pasos: [{pos, last, occasions, decided, follow}].
+var _noise_spots: Array[Dictionary] = []
+## La investigación actual es de un sitio que cree que es un señuelo (no registrará armarios).
+var _investigating_decoy := false
+var _peeking := false
+var _peek_look := Vector3.ZERO
+var _peek_timer := 0.0
+## Muro -> momento en que se asomó.
+var _peeked_walls: Dictionary = {}
 
 
 func _ready() -> void:
@@ -45,6 +68,9 @@ func reset() -> void:
 	_search_queue.clear()
 	_spot_memory.clear()
 	_last_room = null
+	_noise_spots.clear()
+	_peeked_walls.clear()
+	_peeking = false
 
 
 func think(delta: float, intent: CharacterIntent) -> void:
@@ -79,7 +105,14 @@ func think(delta: float, intent: CharacterIntent) -> void:
 	var noise := recent_noise()
 	if not noise.is_empty() and state != State.SEARCH:
 		var noise_position: Vector3 = noise["position"]
-		if state != State.INVESTIGATE or flat_distance(noise_position, _investigate_position) > 3.0:
+		var spot: Dictionary = noise.get("spot", {})
+		var decoy := is_decoy_spot(spot)
+		if decoy:
+			# Probablemente un señuelo: solo a veces, y solo si no estaba haciendo otra cosa.
+			if _follow_decoy(spot):
+				_start_investigate(noise_position, false)
+				_investigating_decoy = true
+		elif state != State.INVESTIGATE or flat_distance(noise_position, _investigate_position) > 3.0:
 			_start_investigate(noise_position, false)
 		forget_noise()
 
@@ -102,6 +135,8 @@ func on_stuck() -> void:
 
 func _set_state(new_state: State) -> void:
 	if new_state != state:
+		if state == State.INVESTIGATE:
+			_peeking = false
 		state = new_state
 		if new_state != State.SEARCH:
 			_search_hold = 0.0
@@ -153,12 +188,17 @@ func _roll_aim_error() -> void:
 func _start_investigate(point: Vector3, search_after: bool) -> void:
 	_investigate_position = point
 	_search_after_investigate = search_after
+	_investigating_decoy = false
+	_peeking = false
 	_look_timer = 0.0
 	set_destination(point)
 	_set_state(State.INVESTIGATE)
 
 
 func _do_investigate(intent: CharacterIntent, delta: float) -> void:
+	if _peeking:
+		_do_peek(intent, delta)
+		return
 	if not navigate(intent, delta):
 		return
 	# Al llegar: mirar alrededor.
@@ -168,11 +208,105 @@ func _do_investigate(intent: CharacterIntent, delta: float) -> void:
 	intent.has_aim = true
 	if _look_timer < LOOK_AROUND_TIME:
 		return
+	# Alguien podría estar detrás de un muro cercano: a veces se asoma por un extremo.
+	if not _investigating_decoy and randf() < GameManager.config.ai_hunter_peek_chance and _start_peek(_investigate_position):
+		return
+	_finish_investigate()
+
+
+func _finish_investigate() -> void:
 	var spots := _spots_near(_investigate_position, SEARCH_RADIUS)
-	if not spots.is_empty() and (_search_after_investigate or randf() < 0.5):
+	if not _investigating_decoy and not spots.is_empty() and (_search_after_investigate or randf() < 0.5):
 		_start_search(spots)
 	else:
 		_set_state(State.PATROL)
+	_investigating_decoy = false
+
+
+# --- Muros sueltos: asomarse por un extremo --------------------------------------
+
+## Va al extremo (el más cercano) de un muro suelto próximo a `near` para mirar detrás.
+func _start_peek(near: Vector3) -> bool:
+	var house := House.find(character.get_tree())
+	if house == null:
+		return false
+	var best: Dictionary = {}
+	var best_distance := SEARCH_RADIUS + 2.0
+	for wall in house.cover_walls():
+		var distance := flat_distance(wall["center"], near)
+		if distance > best_distance:
+			continue
+		if _peeked_walls.has(wall["node"]) and now - float(_peeked_walls[wall["node"]]) < PEEK_COOLDOWN:
+			continue
+		best = wall
+		best_distance = distance
+	if best.is_empty():
+		return false
+	_peeked_walls[best["node"]] = now
+	var center: Vector3 = best["center"]
+	var axis: Vector3 = best["axis"]
+	var half: float = best["half"]
+	var me := character.global_position
+	var end := 1.0 if flat_distance(center + axis * half, me) < flat_distance(center - axis * half, me) else -1.0
+	set_destination(center + axis * end * (half + PEEK_OFFSET))
+	_peek_look = center
+	_peek_timer = 0.0
+	_peeking = true
+	return true
+
+
+func _do_peek(intent: CharacterIntent, delta: float) -> void:
+	if not navigate(intent, delta):
+		return
+	# Mira a lo largo del muro: ve los dos lados de este extremo.
+	intent.aim_point = _peek_look
+	intent.has_aim = true
+	_peek_timer += delta
+	if _peek_timer >= PEEK_TIME:
+		_peeking = false
+		_finish_investigate()
+
+
+# --- Señuelos ---------------------------------------------------------------------
+
+## Recuerda dónde oye pasos. Los de un señuelo suenan "parados" en el mismo sitio; si eso pasa
+## en varias ocasiones distintas, ese sitio es sospechoso.
+func _on_heard(noise_position: Vector3, radius: float) -> void:
+	if absf(radius - GameManager.config.run_noise_radius) > 0.01:
+		return  # Solo pasos (las puertas, los armarios... tienen otro alcance).
+	_noise_spots = _noise_spots.filter(func(s: Dictionary) -> bool: return now - float(s["last"]) < DECOY_MEMORY)
+	var spot: Dictionary = {}
+	for candidate in _noise_spots:
+		if flat_distance(candidate["pos"], noise_position) < DECOY_SPOT_RADIUS:
+			spot = candidate
+			break
+	if spot.is_empty():
+		spot = {"pos": noise_position, "last": -100.0, "occasions": 0, "decided": -1, "follow": false}
+		_noise_spots.append(spot)
+	if now - float(spot["last"]) > DECOY_OCCASION_GAP:
+		spot["occasions"] = int(spot["occasions"]) + 1
+	spot["last"] = now
+	_last_noise["spot"] = spot
+
+
+func is_decoy_spot(spot: Dictionary) -> bool:
+	return not spot.is_empty() and int(spot["occasions"]) >= GameManager.config.ai_hunter_decoy_occasions
+
+
+## ¿Cree que en este punto hay un señuelo?
+func suspects_decoy_at(point: Vector3) -> bool:
+	for spot in _noise_spots:
+		if flat_distance(spot["pos"], point) < DECOY_SPOT_RADIUS and is_decoy_spot(spot):
+			return true
+	return false
+
+
+## Se decide una vez por ocasión (no por cada paso de la ráfaga).
+func _follow_decoy(spot: Dictionary) -> bool:
+	if int(spot["decided"]) != int(spot["occasions"]):
+		spot["decided"] = int(spot["occasions"])
+		spot["follow"] = state == State.PATROL and randf() < GameManager.config.ai_hunter_decoy_follow_chance
+	return bool(spot["follow"]) and state == State.PATROL
 
 
 func _start_search(spots: Array[HidingSpot]) -> void:

@@ -197,7 +197,13 @@ func _on_noise_made(noise_position: Vector3, radius: float, source: Node) -> voi
 	# Misma imprecisión que ve el jugador Hunter.
 	var error := GameManager.config.noise_position_error
 	var jitter := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)).limit_length(1.0) * error
-	_last_noise = {"position": noise_position + Vector3(jitter.x, 0.0, jitter.y), "time": now}
+	_last_noise = {"position": noise_position + Vector3(jitter.x, 0.0, jitter.y), "time": now, "radius": radius}
+	_on_heard(noise_position, radius)
+
+
+## Cada ruido de un rival que llega a oír (posición real, para reconocer sitios repetidos).
+func _on_heard(_noise_position: Vector3, _radius: float) -> void:
+	pass
 
 
 ## Último ruido oído si es reciente (o un diccionario vacío).
