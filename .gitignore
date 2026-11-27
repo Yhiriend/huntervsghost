@@ -4,3 +4,6 @@
 
 # Builds exportados
 /build/
+
+# Caché de Python de las herramientas
+__pycache__/
