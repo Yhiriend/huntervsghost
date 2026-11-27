@@ -28,6 +28,8 @@ func update_intent(character: CharacterBase, intent: CharacterIntent) -> void:
 		# Inclinar poco el joystick = sigilo; la velocidad la decide el sigilo, no la inclinación.
 		sneak = TouchControls.move.length() < GameManager.config.touch_sneak_threshold
 		input = TouchControls.move.normalized()
+	if touch and TouchControls.walk_held:
+		sneak = true  # Botón CAMINAR: camina aunque el joystick esté a tope.
 
 	var cam := character.get_viewport().get_camera_3d()
 	var right := Vector3.RIGHT
@@ -44,6 +46,8 @@ func update_intent(character: CharacterBase, intent: CharacterIntent) -> void:
 		intent.fire = TouchControls.take_fire()
 		intent.interact = TouchControls.take_interact() or Input.is_action_just_pressed("interact")
 		intent.interact_held = TouchControls.interact_held or Input.is_action_pressed("interact")
+		intent.decoy = TouchControls.take_decoy() or Input.is_action_just_pressed("decoy")
+		intent.decoy_held = TouchControls.decoy_held or Input.is_action_pressed("decoy")
 		if character is Hunter:
 			_update_auto_aim(character as Hunter, intent)
 		return
@@ -52,6 +56,8 @@ func update_intent(character: CharacterBase, intent: CharacterIntent) -> void:
 	intent.fire = Input.is_action_just_pressed("fire")
 	intent.interact = Input.is_action_just_pressed("interact")
 	intent.interact_held = Input.is_action_pressed("interact")
+	intent.decoy = Input.is_action_just_pressed("decoy")
+	intent.decoy_held = Input.is_action_pressed("decoy")
 	if cam:
 		var mouse := character.get_viewport().get_mouse_position()
 		var plane := Plane(Vector3.UP, character.global_position.y + AIM_HEIGHT)

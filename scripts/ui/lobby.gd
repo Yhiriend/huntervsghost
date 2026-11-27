@@ -5,6 +5,8 @@ extends Control
 
 const TITLE_COLOR := Color(0.45, 0.85, 1.0)
 const MUTED := Color(0.7, 0.7, 0.8)
+## Salas de internet que caben en la pantalla; el resto, con su código.
+const ONLINE_ROOMS_SHOWN := 4
 
 ## Pantallas de búsqueda: "elegir", "online", "local".
 var _pages: Dictionary = {}
@@ -18,6 +20,7 @@ var _code_edit: LineEdit
 var _server_edit: LineEdit
 var _share_code: Button
 var _rooms_box: VBoxContainer
+var _online_rooms_box: VBoxContainer
 var _status: Label
 var _room_title: Label
 var _room_info: Label
@@ -46,6 +49,7 @@ func _ready() -> void:
 
 	Net.lobby_changed.connect(_refresh_room)
 	Net.rooms_changed.connect(_refresh_rooms)
+	Net.online_rooms_changed.connect(_refresh_online_rooms)
 	Net.joined.connect(_show_room)
 	Net.join_failed.connect(func() -> void:
 		_set_status(Net.last_error if Net.last_error != "" else "No se pudo conectar con la sala."))
@@ -61,6 +65,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	Net.stop_discovery()
+	Net.stop_online_browse()
 
 
 # --- Buscar / crear ----------------------------------------------------------------
@@ -89,12 +94,15 @@ func _build_browse(page: VBoxContainer) -> void:
 	var online := _page("online", page)
 	online.add_child(_label("POR INTERNET", 34, Color(0.8, 0.6, 1.0)))
 	online.add_child(_button("Crear sala", _on_create_online, Color(1.0, 0.6, 0.25)))
-	online.add_child(_label("o únete con el código del anfitrión:", 15, MUTED))
+	online.add_child(_label("o toca una sala para unirte:", 15, MUTED))
+	_online_rooms_box = VBoxContainer.new()
+	_online_rooms_box.add_theme_constant_override("separation", 6)
+	online.add_child(_online_rooms_box)
 	var code_row := HBoxContainer.new()
 	code_row.add_theme_constant_override("separation", 8)
 	online.add_child(code_row)
 	_code_edit = LineEdit.new()
-	_code_edit.placeholder_text = "Código (p. ej. KXRT)"
+	_code_edit.placeholder_text = "o escribe su código (p. ej. KXRT)"
 	_code_edit.max_length = 4
 	_code_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_code_edit.custom_minimum_size = Vector2(0, 48)
@@ -115,6 +123,7 @@ func _build_browse(page: VBoxContainer) -> void:
 	_server_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_server_edit.custom_minimum_size = Vector2(0, 36)
 	_server_edit.text_changed.connect(func(text: String) -> void: Net.set_online_server(text))
+	_server_edit.text_submitted.connect(func(_t: String) -> void: Net.start_online_browse())
 	server_row.add_child(_server_edit)
 	online.add_child(_back_button())
 
@@ -160,6 +169,10 @@ func _show_page(name: String) -> void:
 		_refresh_rooms()
 	else:
 		Net.stop_discovery()
+	if name == "online":
+		Net.start_online_browse()
+	else:
+		Net.stop_online_browse()
 
 
 ## Vuelve a la pantalla anterior. false en la primera (DebugOverlay vuelve entonces al menú).
@@ -198,6 +211,32 @@ func _refresh_rooms() -> void:
 		_rooms_box.add_child(_button(text, func() -> void: _join(ip, port), Color(0.45, 0.85, 1.0)))
 
 
+## Salas de internet que admiten jugadores (se actualiza sola mientras se mira).
+func _refresh_online_rooms() -> void:
+	for child in _online_rooms_box.get_children():
+		child.queue_free()
+	var browser := Net.online_browser
+	if browser == null:
+		return
+	if browser.rooms.is_empty():
+		var text := "Buscando salas..."
+		if browser.state == "ok":
+			text = "No hay salas abiertas ahora mismo: crea una."
+		elif browser.state == "error":
+			text = browser.error_text + " Reintentando..."
+		_online_rooms_box.add_child(_label(text, 15, Color(0.55, 0.55, 0.65)))
+		return
+	var shown := 0
+	for room in browser.rooms:
+		if shown == ONLINE_ROOMS_SHOWN:
+			_online_rooms_box.add_child(_label("y %d más: únete con su código" % (browser.rooms.size() - shown), 14, Color(0.55, 0.55, 0.65)))
+			break
+		var code: String = room["code"]
+		var text := "%s   (%d/%d)" % [room["name"], room["players"], Net.MAX_PLAYERS]
+		_online_rooms_box.add_child(_button(text, func() -> void: _join_online(code), TITLE_COLOR))
+		shown += 1
+
+
 func _on_create() -> void:
 	Net.set_player_name(_name_edit.text)
 	var err := Net.host_room()
@@ -223,6 +262,10 @@ func _on_join_code() -> void:
 	if code.length() != 4:
 		_set_status("Escribe el código de 4 letras que ve el anfitrión en su sala.")
 		return
+	_join_online(code)
+
+
+func _join_online(code: String) -> void:
 	Net.set_player_name(_name_edit.text)
 	Net.set_online_server(_server_edit.text)
 	if Net.join_online(code) != OK:
@@ -275,6 +318,7 @@ func _build_room(page: VBoxContainer) -> void:
 
 func _show_room() -> void:
 	Net.stop_discovery()
+	Net.stop_online_browse()
 	for key in _pages:
 		_pages[key].visible = false
 	_room.visible = true
@@ -290,7 +334,7 @@ func _refresh_room() -> void:
 	_client_wait.visible = not Net.is_host()
 	_share_code.visible = Net.online and Net.is_host()
 	if Net.online:
-		_room_info.text = ("Código de la sala: %s  ·  los demás entran con él en \"Por internet\"." if Net.is_host() else "Conectado a la sala %s. Las rondas las decide el anfitrión.") % Net.room_code
+		_room_info.text = ("Sale en la lista de \"Por internet\"; también pueden entrar con el código %s." if Net.is_host() else "Conectado a la sala %s. Las rondas las decide el anfitrión.") % Net.room_code
 	elif Net.is_host():
 		var ips := Net.local_ips()
 		_room_info.text = "Los demás pueden encontrarla en \"En tu WiFi\" o unirse con la IP: %s" % (", ".join(ips) if not ips.is_empty() else "(sin red local)")

@@ -9,9 +9,12 @@ extends RefCounted
 const DEFAULT_PORT := 24680
 const GAME_TAG := "cazador-o-presa"
 ## Cambia si cambia este protocolo (no el del juego, que ya comprueba Net.PROTOCOL).
-const VERSION := 1
+const VERSION := 2
 const CHANNELS := 4
 const MAX_ROOM_PEERS := 4
+## Máximo de salas que se envían en una lista.
+const MAX_LISTED := 20
+const MAX_NAME := 24
 const CODE_LETTERS := "ABCDEFGHJKLMNPQRSTUVWXYZ"
 const CODE_LENGTH := 4
 
@@ -22,15 +25,18 @@ const CH_ORDERED := 2
 const CH_UNRELIABLE := 3
 
 # Cliente -> servidor
-const HOST := 1  ## [tag, version] crea una sala; quien la crea es el peer 1.
+const HOST := 1  ## [tag, version, nombre] crea una sala; quien la crea es el peer 1.
 const JOIN := 2  ## [tag, version, code]
 const KICK := 3  ## [peer] (solo el anfitrión)
+const LIST := 4  ## [tag, version] pide las salas abiertas (no hace falta estar en una sala)
+const INFO := 5  ## [nombre, abierta] (solo el anfitrión: abierta = admite jugadores)
 # Servidor -> cliente
 const ROOM := 10  ## [code]
 const JOINED := 11  ## [peer, code]
 const PEER_ON := 12  ## [peer] (solo al anfitrión)
 const PEER_OFF := 13  ## [peer] (solo al anfitrión)
 const ERROR := 14  ## [texto]
+const ROOMS := 15  ## [[code, nombre, jugadores], ...] salas abiertas y con hueco
 # Ambos sentidos
 const DATA := 20
 

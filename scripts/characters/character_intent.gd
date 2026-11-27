@@ -15,6 +15,9 @@ var fire: bool = false
 var interact: bool = false
 ## Mantenido (para capturar o registrar).
 var interact_held: bool = false
+## Señuelo (Presa): pulsado este frame / mantenido.
+var decoy: bool = false
+var decoy_held: bool = false
 ## Objeto concreto a usar (la IA lo indica; el jugador usa el más cercano).
 var interact_with: Interactable = null
 
@@ -27,4 +30,6 @@ func reset() -> void:
 	fire = false
 	interact = false
 	interact_held = false
+	decoy = false
+	decoy_held = false
 	interact_with = null

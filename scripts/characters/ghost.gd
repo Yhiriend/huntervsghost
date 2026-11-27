@@ -4,6 +4,8 @@ extends CharacterBase
 ## Si le alcanza una red queda inmovilizado; si el Hunter no completa la captura a tiempo, se libera.
 
 signal state_changed(ghost: Ghost, old_state: State, new_state: State)
+## El señuelo se ha colocado, movido, quitado o ha empezado su recarga (para la red y el HUD).
+signal decoy_changed(ghost: Ghost)
 
 enum State { FREE, NETTED, HIDDEN, CAPTURED }
 
@@ -19,8 +21,17 @@ var hiding_spot: HidingSpot = null
 ## Segundos que faltan para poder volver a esconderse tras ser expulsado.
 var hide_cooldown_left: float = 0.0
 
+## Dónde está el señuelo (Vector3.INF = sin colocar) y su recarga.
+var decoy_position: Vector3 = Vector3.INF
+var decoy_cooldown_left: float = 0.0
+
 var _revealed: bool = true
 var _net_visual: MeshInstance3D
+var _decoy: Decoy
+var _decoy_pressing := false
+var _decoy_hold := 0.0
+var _decoy_steps_left := 0
+var _decoy_step_timer := 0.0
 
 @onready var _collision: CollisionShape3D = $CollisionShape3D
 
@@ -83,6 +94,7 @@ func capture() -> void:
 		return
 	velocity = Vector3.ZERO
 	_set_state(State.CAPTURED)
+	remove_decoy()
 
 
 func enter_hiding(spot: HidingSpot, make_sound: bool = true) -> void:
@@ -119,6 +131,7 @@ func reset_state() -> void:
 	net_time_left = 0.0
 	hide_cooldown_left = 0.0
 	_set_state(State.FREE)
+	remove_decoy()
 
 
 ## Controla si el jugador ve a este Ghost (lo decide el sistema de visión).
@@ -131,6 +144,7 @@ func set_revealed(revealed: bool) -> void:
 
 func _process_actions(delta: float) -> void:
 	hide_cooldown_left = maxf(0.0, hide_cooldown_left - delta)
+	_update_decoy(delta)
 	match state:
 		State.FREE, State.HIDDEN:
 			_update_interaction(delta)
@@ -156,9 +170,121 @@ func net_apply_state(new_state: State, spot: HidingSpot, net_time: float) -> voi
 
 func _puppet_process(delta: float) -> void:
 	super(delta)
+	decoy_cooldown_left = maxf(0.0, decoy_cooldown_left - delta)
 	if state == State.NETTED:
 		net_time_left = maxf(0.0, net_time_left - delta)
 		_net_visual.visible = net_time_left > BLINK_WARNING_TIME or fmod(net_time_left, 0.3) > 0.12
+
+
+# --- Señuelo ------------------------------------------------------------------------
+
+func has_decoy() -> bool:
+	return decoy_position != Vector3.INF
+
+
+## Se puede usar el botón: libre o escondida (los pasos se pueden lanzar desde el armario).
+func can_use_decoy() -> bool:
+	return GameManager.config.decoy_enabled and (state == State.FREE or state == State.HIDDEN)
+
+
+## Deja (o mueve) el señuelo a los pies de la Presa.
+func place_decoy() -> void:
+	if state != State.FREE:
+		return
+	decoy_position = global_position
+	_decoy_steps_left = 0
+	_show_decoy()
+	decoy_changed.emit(self)
+
+
+## Ráfaga de pasos falsos en el señuelo: suenan y hacen ruido como si corriera alguien allí.
+func trigger_decoy() -> bool:
+	if not has_decoy() or decoy_cooldown_left > 0.0 or not can_use_decoy():
+		return false
+	decoy_cooldown_left = GameManager.config.decoy_cooldown
+	_decoy_steps_left = GameManager.config.decoy_steps
+	_decoy_step_timer = 0.0
+	decoy_changed.emit(self)
+	return true
+
+
+func remove_decoy() -> void:
+	decoy_position = Vector3.INF
+	decoy_cooldown_left = 0.0
+	_decoy_steps_left = 0
+	_decoy_pressing = false
+	if _decoy:
+		_decoy.queue_free()
+		_decoy = null
+	decoy_changed.emit(self)
+
+
+## Cliente de red: estado del señuelo que manda el anfitrión.
+func net_apply_decoy(at: Vector3, has: bool, cooldown: float) -> void:
+	decoy_cooldown_left = cooldown
+	if has:
+		decoy_position = at
+		_show_decoy()
+	elif _decoy:
+		decoy_position = Vector3.INF
+		_decoy.queue_free()
+		_decoy = null
+
+
+## Destello en el señuelo con cada paso falso (también en los clientes, con el sonido).
+func decoy_step_flash() -> void:
+	if _decoy:
+		_decoy.step_flash()
+
+
+## Toque: deja el señuelo (si no hay) o lanza los pasos. Mantener: lo mueve aquí.
+func _update_decoy(delta: float) -> void:
+	decoy_cooldown_left = maxf(0.0, decoy_cooldown_left - delta)
+	if _decoy_steps_left > 0:
+		_decoy_step_timer -= delta
+		if _decoy_step_timer <= 0.0:
+			var cfg := GameManager.config
+			_decoy_step_timer = cfg.decoy_step_interval
+			_decoy_steps_left -= 1
+			var at := decoy_position + Vector3(randf_range(-0.3, 0.3), 0.0, randf_range(-0.3, 0.3))
+			GameManager.make_noise(at, cfg.run_noise_radius, self)
+			Audio.play_random_at("step", 4, at, cfg.run_noise_radius, -4.0)
+			decoy_step_flash()
+	if not can_use_decoy():
+		_decoy_pressing = false
+		return
+	if intent.decoy:
+		if not has_decoy():
+			place_decoy()
+			return
+		_decoy_pressing = true
+		_decoy_hold = 0.0
+	if not _decoy_pressing:
+		return
+	if intent.decoy_held:
+		_decoy_hold += delta
+		if _decoy_hold >= GameManager.config.decoy_move_hold:
+			_decoy_pressing = false
+			place_decoy()
+	else:
+		_decoy_pressing = false
+		trigger_decoy()
+
+
+func _show_decoy() -> void:
+	if _decoy == null:
+		_decoy = Decoy.new()
+		_decoy.name = "Senuelo_%s" % name
+		_decoy.owner_ghost = self
+		# Fuera del personaje: no se mueve con él ni se oculta cuando él no se ve.
+		get_parent().add_child(_decoy)
+	_decoy.global_position = decoy_position
+
+
+func _exit_tree() -> void:
+	if _decoy and is_instance_valid(_decoy):
+		_decoy.queue_free()
+	_decoy = null
 
 
 func _apply_movement(delta: float) -> void:

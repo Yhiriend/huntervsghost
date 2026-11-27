@@ -45,6 +45,7 @@ func _ready() -> void:
 func _finish() -> void:
 	Input.action_release("move_right")
 	Input.action_release("fire")
+	Input.action_release("decoy")
 	Net.leave()
 	var f := FileAccess.open(CLIENT_LOG, FileAccess.WRITE)
 	f.store_string("\n".join(lines) + "\n")
@@ -64,7 +65,6 @@ func run() -> void:
 	if online != "":
 		var parts := online.split(":")
 		Net.online_server = "%s:%s" % [parts[0], parts[1]]
-		expected_room = "Sala %s" % parts[2]
 		check(Net.join_online(parts[2]) == OK, "Conectando con el servidor de salas")
 	else:
 		Net.start_discovery()
@@ -77,6 +77,8 @@ func run() -> void:
 	check(joined and Net.room_name == expected_room, "Dentro de la sala del anfitrión (estado %d, id %d, jugadores %d, sala '%s')" % [multiplayer.multiplayer_peer.get_connection_status(), multiplayer.get_unique_id(), Net.players.size(), Net.room_name])
 	if not joined:
 		return
+	var pinged := await wait_for(func(): return Net.ping_ms() >= 0, 4.0)
+	check(pinged, "Ping con el anfitrión medido (%d ms)" % Net.ping_ms())
 	var loaded := await wait_for(func(): return match_scene() != null, 15.0)
 	check(loaded, "El cliente carga la ronda que manda el anfitrión")
 	if not loaded:
@@ -93,6 +95,11 @@ func run() -> void:
 	Input.action_press("move_right")
 	await wait_for(func(): return false, 1.5)
 	Input.action_release("move_right")
+	Input.action_press("decoy")
+	await wait_for(func(): return false, 0.1)
+	Input.action_release("decoy")
+	var decoy_back := await wait_for(func(): return me.has_decoy() and me._decoy != null and me._decoy.visible, 3.0)
+	check(decoy_back, "Mi señuelo llega al anfitrión y vuelve (lo veo)")
 
 	var netted := await wait_for(func(): return me.state == Ghost.State.NETTED, 6.0)
 	check(netted, "Me llega la red del anfitrión (estado ATRAPADO)")

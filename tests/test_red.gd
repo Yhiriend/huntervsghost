@@ -91,7 +91,9 @@ func run() -> void:
 	GameManager.series = MatchSeries.new([
 		{"name": "Anfitrión", "peer": 1}, {"name": "Cliente", "peer": client_peer},
 		{"name": "IA 1", "peer": 0}, {"name": "IA 2", "peer": 0}])
+	await before_game_starts()
 	Net.in_game = true
+	Net._update_room_info()
 	Net.load_round()
 	await wait_for(func(): return match_scene() != null, 5.0)
 	var m := match_scene()
@@ -114,6 +116,9 @@ func run() -> void:
 		await get_tree().physics_frame
 		moved = maxf(moved, client_ghost.global_position.distance_to(start))
 	check(moved > 0.5, "Los controles del cliente mueven su Presa en el anfitrión (%.1f m)" % moved)
+	var decoy := await wait_for(func(): return client_ghost.has_decoy(), 3.0)
+	check(decoy, "El botón de señuelo del cliente deja su señuelo en el anfitrión")
+	await after_game_started()
 
 	# Red y captura de la Presa del cliente.
 	if client_ghost.state == Ghost.State.HIDDEN:
@@ -149,6 +154,15 @@ func run() -> void:
 ## Crea la sala (aquí, en red local). test_red_online lo cambia por el servidor de salas.
 func host_session() -> bool:
 	return Net.host_room() == OK
+
+
+## Puntos de enganche para test_red_online (aquí no hacen nada).
+func before_game_starts() -> void:
+	pass
+
+
+func after_game_started() -> void:
+	pass
 
 
 ## Argumentos para el cliente (tras "--").

@@ -11,6 +11,8 @@ const P := preload("res://server/relay_protocol.gd")
 ## Motivo del último fallo (texto para el jugador).
 var error_text: String = ""
 var room_code: String = ""
+## Nombre con el que se anuncia la sala (solo anfitrión).
+var room_name: String = ""
 
 var _connection: ENetConnection
 var _server: ENetPacketPeer
@@ -26,8 +28,9 @@ var _channel := 0
 var _refusing := false
 
 
-func create_host(address: String, port: int = P.DEFAULT_PORT) -> Error:
+func create_host(address: String, port: int = P.DEFAULT_PORT, name: String = "") -> Error:
 	_hosting = true
+	room_name = name
 	return _connect(address, port)
 
 
@@ -72,7 +75,7 @@ func _poll() -> void:
 		match type:
 			ENetConnection.EVENT_CONNECT:
 				if _hosting:
-					_send_control(P.HOST, [P.GAME_TAG, P.VERSION])
+					_send_control(P.HOST, [P.GAME_TAG, P.VERSION, room_name])
 				else:
 					_send_control(P.JOIN, [P.GAME_TAG, P.VERSION, _join_code])
 			ENetConnection.EVENT_DISCONNECT, ENetConnection.EVENT_ERROR:
@@ -117,6 +120,13 @@ func _receive(packet: PackedByteArray, channel: int) -> void:
 				peer_disconnected.emit(id)
 		P.ERROR:
 			error_text = String(args[0]) if not args.is_empty() else "Error del servidor."
+
+
+## Anfitrión: actualiza cómo aparece la sala en la lista (abierta = admite jugadores).
+func set_room_info(name: String, open: bool) -> void:
+	room_name = name
+	if _unique_id == 1:
+		_send_control(P.INFO, [name, open])
 
 
 func _put_packet_script(buffer: PackedByteArray) -> Error:

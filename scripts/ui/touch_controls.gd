@@ -4,6 +4,9 @@ extends Control
 ##   - Joystick flotante en la mitad izquierda: aparece donde pones el dedo.
 ##     Poco inclinado = sigilo; inclinado del todo = correr.
 ##   - Botón RED (solo Hunter) con el tiempo de recarga dibujado alrededor.
+##   - Botón SEÑUELO (solo Presa): deja la pelotita; luego cada toque = pasos falsos allí;
+##     mantener = moverla a donde estás.
+##   - Botón CAMINAR (mantener): mientras está pulsado se camina aunque el joystick esté a tope.
 ##   - Botón de acción contextual con el texto de la acción (ABRIR, ESCONDERSE, CAPTURAR...).
 ##     Las acciones de mantener muestran el progreso alrededor del botón.
 ##   - En los escenarios de prueba: botones Cambiar (Tab), Espectador (P) y Reiniciar (R).
@@ -14,6 +17,9 @@ const BASE_RADIUS := 80.0
 const KNOB_RADIUS := 34.0
 const FIRE_RADIUS := 68.0
 const ACTION_RADIUS := 58.0
+const WALK_RADIUS := 44.0
+const DECOY_RADIUS := 48.0
+const COLOR_DECOY := Color(0.45, 0.75, 1.0, 0.45)
 ## Los botones aceptan toques un poco fuera de su círculo (dedos imprecisos).
 const HIT_SLOP := 1.3
 const DEAD_ZONE := 0.15
@@ -37,6 +43,10 @@ const COLOR_PROGRESS := Color(1.0, 0.9, 0.3, 0.95)
 ## Dirección del joystick (pantalla: x derecha, y abajo), longitud 0-1.
 static var move := Vector2.ZERO
 static var interact_held := false
+## Botón CAMINAR mantenido.
+static var walk_held := false
+static var decoy_held := false
+static var _decoy_queued := false
 static var _fire_queued := false
 static var _interact_queued := false
 
@@ -48,6 +58,10 @@ var action_text := ""
 var action_hold := false
 ## Progreso de la acción en curso (0-1) o < 0 si no hay.
 var action_progress := -1.0
+## Botón SEÑUELO (Presa): visible, ya colocado, y recarga (0 = recién usado, 1 = listo).
+var show_decoy := false
+var decoy_placed := false
+var decoy_ready := 1.0
 ## Muestra el joystick y los botones (hay un personaje controlado).
 var controls_enabled := false
 
@@ -55,6 +69,8 @@ var _joy_index := -1
 var _joy_center := Vector2.ZERO
 var _fire_index := -1
 var _action_index := -1
+var _walk_index := -1
+var _decoy_index := -1
 var _mouse_down := false
 var _scenario_bar: HBoxContainer
 var _camera_button: Button
@@ -64,6 +80,13 @@ var _camera_button: Button
 static func take_fire() -> bool:
 	var value := _fire_queued
 	_fire_queued = false
+	return value
+
+
+## Devuelve true una vez por cada pulsación del botón SEÑUELO.
+static func take_decoy() -> bool:
+	var value := _decoy_queued
+	_decoy_queued = false
 	return value
 
 
@@ -77,6 +100,9 @@ static func take_interact() -> bool:
 static func clear_state() -> void:
 	move = Vector2.ZERO
 	interact_held = false
+	walk_held = false
+	decoy_held = false
+	_decoy_queued = false
 	_fire_queued = false
 	_interact_queued = false
 
@@ -132,7 +158,7 @@ func set_controls_enabled(enabled: bool) -> void:
 
 
 func _process(_delta: float) -> void:
-	if not is_visible_in_tree() and (_joy_index >= 0 or _fire_index >= 0 or _action_index >= 0):
+	if not is_visible_in_tree() and (_joy_index >= 0 or _fire_index >= 0 or _action_index >= 0 or _walk_index >= 0 or _decoy_index >= 0):
 		_release_all()
 	queue_redraw()
 
@@ -166,6 +192,12 @@ func _on_touch(index: int, pos: Vector2, pressed: bool) -> void:
 		elif index == _action_index:
 			_action_index = -1
 			interact_held = false
+		elif index == _walk_index:
+			_walk_index = -1
+			walk_held = false
+		elif index == _decoy_index:
+			_decoy_index = -1
+			decoy_held = false
 		return
 
 	if show_fire and _fire_index < 0 and pos.distance_to(_fire_center()) <= FIRE_RADIUS * _scale() * HIT_SLOP:
@@ -178,6 +210,15 @@ func _on_touch(index: int, pos: Vector2, pressed: bool) -> void:
 			_action_index = index
 			_interact_queued = true
 			interact_held = true
+		get_viewport().set_input_as_handled()
+	elif show_decoy and _decoy_index < 0 and pos.distance_to(_decoy_center()) <= DECOY_RADIUS * _scale() * HIT_SLOP:
+		_decoy_index = index
+		_decoy_queued = true
+		decoy_held = true
+		get_viewport().set_input_as_handled()
+	elif _walk_index < 0 and pos.distance_to(_walk_center()) <= WALK_RADIUS * _scale() * HIT_SLOP:
+		_walk_index = index
+		walk_held = true
 		get_viewport().set_input_as_handled()
 	elif _joy_index < 0 and _in_joystick_zone(pos):
 		_joy_index = index
@@ -204,6 +245,8 @@ func _release_all() -> void:
 	_joy_index = -1
 	_fire_index = -1
 	_action_index = -1
+	_walk_index = -1
+	_decoy_index = -1
 	_mouse_down = false
 	clear_state()
 
@@ -235,6 +278,19 @@ func _action_center() -> Vector2:
 	return _fire_center() + Vector2(-(FIRE_RADIUS + ACTION_RADIUS + 30.0) * s, -40.0 * s)
 
 
+## Encima del botón de la esquina (RED, o acción si no hay red): a mano del pulgar derecho.
+func _walk_center() -> Vector2:
+	var s := _scale()
+	var below_radius := FIRE_RADIUS if show_fire else ACTION_RADIUS
+	return _fire_center() + Vector2(0, -(below_radius + WALK_RADIUS + 34.0) * s)
+
+
+## A la izquierda del botón de la esquina (sin RED, la Presa tiene ahí el de acción).
+func _decoy_center() -> Vector2:
+	var s := _scale()
+	return _fire_center() + Vector2(-(ACTION_RADIUS + DECOY_RADIUS + 30.0) * s, -30.0 * s)
+
+
 # --- Dibujo ------------------------------------------------------------------------
 
 func _draw() -> void:
@@ -246,14 +302,35 @@ func _draw() -> void:
 	# Joystick
 	var base := _joy_center if _joy_index >= 0 else _joy_rest_center()
 	var radius := BASE_RADIUS * s
-	var sneaking := move != Vector2.ZERO and move.length() < GameManager.config.touch_sneak_threshold
+	var walking := walk_held and move != Vector2.ZERO
+	var sneaking := walking or (move != Vector2.ZERO and move.length() < GameManager.config.touch_sneak_threshold)
 	draw_circle(base, radius, COLOR_BASE)
 	draw_arc(base, radius, 0.0, TAU, 48, COLOR_SNEAK if sneaking else COLOR_RING, 3.0 * s, true)
 	# Marca del límite de sigilo.
 	draw_arc(base, radius * GameManager.config.touch_sneak_threshold, 0.0, TAU, 40, Color(1, 1, 1, 0.12), 1.5 * s, true)
 	draw_circle(base + move * radius, KNOB_RADIUS * s, COLOR_SNEAK if sneaking else COLOR_PRESSED)
 	if _joy_index >= 0:
-		_draw_text(font, base + Vector2(0, -radius - 14.0 * s), "SIGILO" if sneaking else ("CORRER" if move != Vector2.ZERO else ""), 16, s)
+		var label := "CAMINAR" if walking else ("SIGILO" if sneaking else ("CORRER" if move != Vector2.ZERO else ""))
+		_draw_text(font, base + Vector2(0, -radius - 14.0 * s), label, 16, s)
+
+	# Botón SEÑUELO (Presa)
+	if show_decoy:
+		var decoy_center := _decoy_center()
+		var decoy_r := DECOY_RADIUS * s
+		var decoy_is_ready := decoy_ready >= 1.0 or not decoy_placed
+		draw_circle(decoy_center, decoy_r, COLOR_PRESSED if _decoy_index >= 0 else (COLOR_DECOY if decoy_is_ready else COLOR_FIRE_OFF))
+		draw_arc(decoy_center, decoy_r, 0.0, TAU, 40, COLOR_RING, 3.0 * s, true)
+		if not decoy_is_ready:
+			draw_arc(decoy_center, decoy_r + 6.0 * s, -PI / 2.0, -PI / 2.0 + TAU * decoy_ready, 40, COLOR_PROGRESS, 5.0 * s, true)
+		_draw_text(font, decoy_center + Vector2(0, 2.0 * s), "SEÑUELO", 13, s)
+		_draw_text(font, decoy_center + Vector2(0, 20.0 * s), "pasos · mantén: mover" if decoy_placed else "dejar aquí", 10, s)
+
+	# Botón CAMINAR
+	var walk_center := _walk_center()
+	var walk_r := WALK_RADIUS * s
+	draw_circle(walk_center, walk_r, COLOR_SNEAK if walk_held else COLOR_BASE)
+	draw_arc(walk_center, walk_r, 0.0, TAU, 40, COLOR_SNEAK if walk_held else COLOR_RING, 3.0 * s, true)
+	_draw_text(font, walk_center + Vector2(0, 5.0 * s), "CAMINAR", 13, s)
 
 	# Botón RED
 	if show_fire:

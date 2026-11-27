@@ -14,6 +14,8 @@ extends Node
 
 signal lobby_changed
 signal rooms_changed
+## Cambió la lista de salas de internet (online_browser.rooms / state).
+signal online_rooms_changed
 ## Conexión con el anfitrión establecida / fallida.
 signal joined
 signal join_failed
@@ -26,7 +28,7 @@ const PORT := 24680
 const DISCOVERY_PORT := 24681
 const MAX_PLAYERS := MatchSeries.SLOTS
 const GAME_TAG := "cazador-o-presa"
-const PROTOCOL := 1
+const PROTOCOL := 2
 const ANNOUNCE_INTERVAL := 1.0
 ## Una sala que no se anuncia en este tiempo desaparece de la lista.
 const ROOM_TIMEOUT := 3.5
@@ -57,6 +59,12 @@ var room_code: String = ""
 var last_error: String = ""
 ## Conexión con el servidor de salas (Godot la sustituye antes de avisar de un fallo).
 var _relay: RelayPeer
+## Ping (ida y vuelta, ms) con cada peer: el cliente mide al anfitrión; el anfitrión a cada cliente.
+var pings: Dictionary = {}
+const PING_INTERVAL := 1.0
+var _ping_left := 0.0
+## Buscador de salas de internet (activo mientras se está en "Por internet").
+var online_browser: RelayBrowser
 
 ## Clientes que ya han cargado la ronda actual (solo anfitrión).
 var _ready_peers: Dictionary = {}
@@ -83,6 +91,16 @@ func _process(delta: float) -> void:
 			_send_announce()
 	if _listen:
 		_poll_discovery()
+	if online_browser:
+		online_browser.poll(delta)
+	if is_active():
+		_ping_left -= delta
+		if _ping_left <= 0.0:
+			_ping_left = PING_INTERVAL
+			for peer in multiplayer.get_peers():
+				_ping.rpc_id(peer, Time.get_ticks_msec())
+	elif not pings.is_empty():
+		pings.clear()
 
 
 # --- Estado ----------------------------------------------------------------------
@@ -159,7 +177,7 @@ func host_online() -> Error:
 	leave()
 	var peer := RelayPeer.new()
 	var target := _online_target()
-	var err := peer.create_host(target[0], target[1]) if target[0] != "" else ERR_UNCONFIGURED
+	var err := peer.create_host(target[0], target[1], "Sala de %s" % player_name) if target[0] != "" else ERR_UNCONFIGURED
 	if err != OK:
 		last_error = peer.error_text if peer.error_text != "" else "Configura la dirección del servidor."
 		return err
@@ -185,6 +203,32 @@ func join_online(code: String) -> Error:
 	return OK
 
 
+## Empieza a listar las salas abiertas del servidor de internet (cada pocos segundos).
+func start_online_browse() -> void:
+	stop_online_browse()
+	var target := _online_target()
+	online_browser = RelayBrowser.new()
+	online_browser.changed.connect(func() -> void: online_rooms_changed.emit())
+	if target[0] == "":
+		online_browser.state = "error"
+		online_browser.error_text = "Configura la dirección del servidor."
+	else:
+		online_browser.start(target[0], target[1])
+	online_rooms_changed.emit()
+
+
+func stop_online_browse() -> void:
+	if online_browser:
+		online_browser.stop()
+		online_browser = null
+
+
+## Anfitrión online: la sala aparece en la lista solo mientras admite jugadores.
+func _update_room_info() -> void:
+	if online and is_host() and _relay:
+		_relay.set_room_info(room_name, not in_game and players.size() < MAX_PLAYERS)
+
+
 func set_online_server(value: String) -> void:
 	online_server = value.strip_edges()
 	_save_settings()
@@ -205,7 +249,7 @@ func _on_room_created(code: String, peer: RelayPeer) -> void:
 	if multiplayer.multiplayer_peer != peer:
 		return
 	room_code = code
-	room_name = "Sala %s" % code
+	room_name = peer.room_name
 	players = {1: {"name": player_name}}
 	player_order = [1]
 	in_game = false
@@ -235,6 +279,33 @@ func name_of(peer: int) -> String:
 	return players.get(peer, {}).get("name", "?")
 
 
+# --- Ping ------------------------------------------------------------------------
+
+## Ping a mostrar: con el anfitrión (cliente) o el peor de los clientes (anfitrión). -1 sin dato.
+func ping_ms() -> int:
+	if not is_active() or pings.is_empty():
+		return -1
+	if is_client():
+		return int(pings.get(1, -1))
+	var worst := -1
+	for peer in pings:
+		worst = maxi(worst, int(pings[peer]))
+	return worst
+
+
+@rpc("any_peer", "unreliable")
+func _ping(sent_msec: int) -> void:
+	_pong.rpc_id(multiplayer.get_remote_sender_id(), sent_msec)
+
+
+@rpc("any_peer", "unreliable")
+func _pong(sent_msec: int) -> void:
+	var peer := multiplayer.get_remote_sender_id()
+	var rtt := float(Time.get_ticks_msec() - sent_msec)
+	# Suavizado para que el número no salte en cada medida.
+	pings[peer] = rtt if not pings.has(peer) else lerpf(pings[peer], rtt, 0.4)
+
+
 # --- Partida -----------------------------------------------------------------------
 
 ## Anfitrión: empieza una partida nueva con los jugadores de la sala (+ IA) en orden aleatorio.
@@ -250,6 +321,7 @@ func start_match() -> void:
 		ai += 1
 	entries.shuffle()
 	in_game = true
+	_update_room_info()
 	GameManager.series = MatchSeries.new(entries)
 	load_round()
 
@@ -317,6 +389,7 @@ func back_to_lobby() -> void:
 @rpc("authority", "call_local", "reliable")
 func _back_to_lobby() -> void:
 	in_game = false
+	_update_room_info()
 	GameManager.series = null
 	GameManager.round_setup = {}
 	get_tree().change_scene_to_file(LOBBY_SCENE)
@@ -341,6 +414,7 @@ func _on_peer_disconnected(peer: int) -> void:
 	if players.has(peer):
 		players.erase(peer)
 		player_order.erase(peer)
+		pings.erase(peer)
 		_ready_peers.erase(peer)
 		_send_lobby()
 		player_left.emit(peer)
@@ -397,6 +471,7 @@ func _rejected(reason: String) -> void:
 
 func _send_lobby() -> void:
 	_lobby_state.rpc(players, player_order, room_name)
+	_update_room_info()
 	lobby_changed.emit()
 
 

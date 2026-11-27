@@ -9,7 +9,7 @@ const P := preload("res://server/relay_protocol.gd")
 const KICK_DELAY_MS := 300
 
 var connection: ENetConnection
-## code -> {"peers": {id: ENetPacketPeer}, "next_id": int}
+## code -> {"peers": {id: ENetPacketPeer}, "next_id": int, "name": String, "open": bool}
 var rooms: Dictionary = {}
 ## ENetPacketPeer -> {"code": String, "id": int}
 var members: Dictionary = {}
@@ -73,7 +73,16 @@ func _receive(peer: ENetPacketPeer, packet: PackedByteArray, channel: int) -> vo
 	match type:
 		P.HOST:
 			if _check_version(peer, args):
-				_create_room(peer)
+				_create_room(peer, String(args[2]) if args.size() >= 3 else "")
+		P.LIST:
+			if _check_version(peer, args):
+				_send(peer, P.control(P.ROOMS, [_open_rooms()]))
+		P.INFO:
+			var host_info: Dictionary = members.get(peer, {})
+			if host_info.get("id", 0) == 1 and args.size() >= 2:
+				var room: Dictionary = rooms[host_info["code"]]
+				room["name"] = _clean_name(String(args[0]), host_info["code"])
+				room["open"] = bool(args[1])
 		P.JOIN:
 			if _check_version(peer, args) and args.size() >= 3:
 				_join(peer, String(args[2]).to_upper().strip_edges())
@@ -97,9 +106,9 @@ func _check_version(peer: ENetPacketPeer, args: Array) -> bool:
 	return true
 
 
-func _create_room(peer: ENetPacketPeer) -> void:
+func _create_room(peer: ENetPacketPeer, room_name: String) -> void:
 	var code := _new_code()
-	rooms[code] = {"peers": {1: peer}, "next_id": 2}
+	rooms[code] = {"peers": {1: peer}, "next_id": 2, "name": _clean_name(room_name, code), "open": true}
 	members[peer] = {"code": code, "id": 1}
 	_send(peer, P.control(P.ROOM, [code]))
 	_log("Sala %s creada (%d salas)" % [code, rooms.size()])
@@ -112,6 +121,9 @@ func _join(peer: ENetPacketPeer, code: String) -> void:
 	var room: Dictionary = rooms[code]
 	if room["peers"].size() >= P.MAX_ROOM_PEERS:
 		_reject(peer, "La sala está llena.")
+		return
+	if not room["open"]:
+		_reject(peer, "La partida de esa sala ya ha empezado.")
 		return
 	# Identificadores grandes y únicos dentro de la sala (como los de ENetMultiplayerPeer).
 	var id: int = room["next_id"]
@@ -164,6 +176,22 @@ func _forward(peer: ENetPacketPeer, packet: PackedByteArray, channel: int) -> vo
 		if target < 0 and id == -target:
 			continue
 		(room_peers[id] as ENetPacketPeer).send(channel, out, flags)
+
+
+## Salas que admiten jugadores: [[code, nombre, jugadores], ...], las más llenas primero.
+func _open_rooms() -> Array:
+	var out := []
+	for code in rooms:
+		var room: Dictionary = rooms[code]
+		if room["open"] and room["peers"].size() < P.MAX_ROOM_PEERS:
+			out.append([code, room["name"], room["peers"].size()])
+	out.sort_custom(func(a, b): return a[2] > b[2])
+	return out.slice(0, P.MAX_LISTED)
+
+
+func _clean_name(room_name: String, code: String) -> String:
+	var clean := room_name.strip_edges().left(P.MAX_NAME)
+	return clean if clean != "" else "Sala %s" % code
 
 
 func _reject(peer: ENetPacketPeer, reason: String) -> void:

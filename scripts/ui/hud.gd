@@ -61,6 +61,7 @@ func _process(delta: float) -> void:
 	touch.set_scenario_buttons(scenario_buttons)
 	touch.set_camera_button(camera_button)
 	touch.show_fire = false
+	touch.show_decoy = false
 	touch.action_text = ""
 	touch.action_progress = -1.0
 	touch.set_controls_enabled(_controlled != null and not _controlled.frozen and _controlled.is_active())
@@ -100,9 +101,19 @@ func _update_status() -> void:
 			return
 	elif _controlled is Ghost:
 		var ghost := _controlled as Ghost
+		touch.show_decoy = GameManager.config.decoy_enabled and ghost.state != Ghost.State.CAPTURED
+		touch.decoy_placed = ghost.has_decoy()
+		touch.decoy_ready = 1.0 - ghost.decoy_cooldown_left / maxf(GameManager.config.decoy_cooldown, 0.001)
 		match ghost.state:
 			Ghost.State.FREE:
 				_status_label.text = "Libre" if ghost.can_hide() else "Libre · no puedes esconderte (%.1f s)" % ghost.hide_cooldown_left
+				if not touch.visible and GameManager.config.decoy_enabled:
+					if not ghost.has_decoy():
+						_status_label.text += " · [Q] dejar señuelo"
+					elif ghost.decoy_cooldown_left > 0.0:
+						_status_label.text += " · señuelo %.1f s" % ghost.decoy_cooldown_left
+					else:
+						_status_label.text += " · [Q] pasos del señuelo (mantén: moverlo)"
 			Ghost.State.NETTED:
 				_status_label.text = "¡ATRAPADO! Te liberas en %.1f s" % ghost.net_time_left
 			Ghost.State.HIDDEN:

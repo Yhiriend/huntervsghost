@@ -39,6 +39,7 @@ func _setup_input_map() -> void:
 	_action("sneak", [_key(KEY_SHIFT), _joy(JOY_BUTTON_LEFT_SHOULDER)])
 	_action("fire", [_mouse(MOUSE_BUTTON_LEFT), _key(KEY_SPACE), _joy(JOY_BUTTON_A)])
 	_action("interact", [_key(KEY_E), _joy(JOY_BUTTON_X)])
+	_action("decoy", [_key(KEY_Q), _joy(JOY_BUTTON_B)])
 	_action("reset_scenario", [_key(KEY_R), _joy(JOY_BUTTON_BACK)])
 	_action("switch_character", [_key(KEY_TAB), _joy(JOY_BUTTON_Y)])
 	_action("zoom_in", [_mouse(MOUSE_BUTTON_WHEEL_UP), _key(KEY_EQUAL)])

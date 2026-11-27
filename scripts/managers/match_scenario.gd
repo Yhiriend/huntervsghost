@@ -69,6 +69,7 @@ var _remote_inputs: Dictionary = {}
 var _snapshot_frame: int = 0
 var _fire_seq: int = 0
 var _interact_seq: int = 0
+var _decoy_seq: int = 0
 var _nets: Dictionary = {}
 var _net_counter: int = 0
 ## Votos del desempate: peer -> "tiebreak" / "draw" (anfitrión).
@@ -648,6 +649,8 @@ func _setup_network() -> void:
 	Net.player_left.connect(_on_player_left)
 	for node in get_tree().get_nodes_in_group("ghosts"):
 		(node as Ghost).state_changed.connect(_on_ghost_state_net)
+		(node as Ghost).decoy_changed.connect(func(ghost: Ghost) -> void:
+			_send("_ev_decoy", [_index_of(ghost), ghost.decoy_position if ghost.has_decoy() else Vector3.ZERO, ghost.has_decoy(), ghost.decoy_cooldown_left]))
 	for node in _doors:
 		(node as Door).open_changed.connect(func(door: Door, open: bool) -> void: _send("_ev_door", [_doors.find(door), open]))
 	for node in _rooms:
@@ -846,7 +849,18 @@ func _forward_noise(at: Vector3, radius: float, source: Node) -> void:
 
 @rpc("authority", "unreliable")
 func _ev_noise(at: Vector3, radius: float, source_index: int) -> void:
-	GameManager.noise_made.emit(at, radius, _character_at(source_index))
+	var source := _character_at(source_index)
+	# Pasos falsos del señuelo: destello también en el cliente.
+	if source is Ghost and (source as Ghost).has_decoy() and at.distance_to((source as Ghost).decoy_position) < 0.6:
+		(source as Ghost).decoy_step_flash()
+	GameManager.noise_made.emit(at, radius, source)
+
+
+@rpc("authority", "reliable")
+func _ev_decoy(index: int, at: Vector3, has: bool, cooldown: float) -> void:
+	var ghost := _character_at(index) as Ghost
+	if ghost:
+		ghost.net_apply_decoy(at, has, cooldown)
 
 
 @rpc("authority", "reliable")
@@ -882,7 +896,9 @@ func _send_intent() -> void:
 		_fire_seq += 1
 	if me.intent.interact:
 		_interact_seq += 1
-	_net_intent.rpc_id(1, NetInputController.make_packet(me.intent, _fire_seq, _interact_seq))
+	if me.intent.decoy:
+		_decoy_seq += 1
+	_net_intent.rpc_id(1, NetInputController.make_packet(me.intent, _fire_seq, _interact_seq, _decoy_seq))
 
 
 @rpc("any_peer", "unreliable_ordered")

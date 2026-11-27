@@ -6,8 +6,8 @@ extends CanvasLayer
 ##   Esc -> volver al menú principal.
 ## El panel se genera solo a partir de las variables @export_range de GameConfig.
 
-const TOUCH_HELP_TEXT := "Joystick: mover (poco inclinado = sigilo) · RED: disparar (apunta sola a la Presa visible) · Botón verde: usar (mantener: capturar/registrar)"
-const HELP_TEXT := "WASD mover · Ratón apuntar · Clic red · E usar (mantener: capturar/registrar) · Shift sigilo · Tab cambiar · R reiniciar · F1 ajustes · P espectador · F2 conos · 1-4 escenario · Esc menú"
+const TOUCH_HELP_TEXT := "Joystick: mover (poco inclinado = sigilo) · CAMINAR (mantener): caminar · SEÑUELO: pasos falsos · RED: disparar (apunta sola a la Presa visible) · Botón verde: usar (mantener: capturar/registrar)"
+const HELP_TEXT := "WASD mover · Ratón apuntar · Clic red · E usar (mantener: capturar/registrar) · Shift sigilo · Q señuelo (mantén: moverlo) · Tab cambiar · R reiniciar · F1 ajustes · P espectador · F2 conos · 1-4 escenario · Esc menú"
 ## Pantallas sin ayuda de controles.
 const NO_HELP_SCENES := ["res://scenes/main/MainMenu.tscn", "res://scenes/main/PlaytestSummary.tscn"]
 ## Escenarios accesibles con las teclas 1 a 4.
@@ -97,7 +97,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	_fps_label.text = "%d FPS · %d draw calls" % [Engine.get_frames_per_second(),
+	var ping := Net.ping_ms()
+	_fps_label.text = "%d FPS%s · %d draw calls" % [Engine.get_frames_per_second(),
+		(" · ping %d ms" % ping) if ping >= 0 else "",
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)]
 	var current := get_tree().current_scene
 	var touch := GameManager.is_touch_mode()

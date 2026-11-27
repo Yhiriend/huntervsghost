@@ -5,12 +5,14 @@ extends CharacterController
 ## Disparar y usar llegan como contadores: si el paquete de un frame se pierde, la pulsación no.
 
 ## Formato del paquete (PackedFloat32Array), compartido con MatchScenario.
-enum Field { FIRE_SEQ, INTERACT_SEQ, MOVE_X, MOVE_Z, SNEAK, HAS_AIM, AIM_X, AIM_Z, HELD, SIZE }
+enum Field { FIRE_SEQ, INTERACT_SEQ, MOVE_X, MOVE_Z, SNEAK, HAS_AIM, AIM_X, AIM_Z, HELD, DECOY_SEQ, DECOY_HELD, SIZE }
 
 var peer: int = 0
 var _packet := PackedFloat32Array()
 var _fire_seen: int = -1
 var _interact_seen: int = -1
+var _decoy_seen: int = -1
+var _pending_decoy: bool = false
 var _pending_fire: bool = false
 var _pending_interact: bool = false
 
@@ -23,6 +25,7 @@ func reset() -> void:
 	_packet = PackedFloat32Array()
 	_pending_fire = false
 	_pending_interact = false
+	_pending_decoy = false
 
 
 func apply_packet(packet: PackedFloat32Array) -> void:
@@ -35,8 +38,12 @@ func apply_packet(packet: PackedFloat32Array) -> void:
 		_pending_fire = true
 	if _interact_seen >= 0 and interact_seq != _interact_seen:
 		_pending_interact = true
+	var decoy_seq := int(packet[Field.DECOY_SEQ])
+	if _decoy_seen >= 0 and decoy_seq != _decoy_seen:
+		_pending_decoy = true
 	_fire_seen = fire_seq
 	_interact_seen = interact_seq
+	_decoy_seen = decoy_seq
 	_packet = packet
 
 
@@ -49,14 +56,17 @@ func update_intent(character: CharacterBase, intent: CharacterIntent) -> void:
 	if intent.has_aim:
 		intent.aim_point = Vector3(_packet[Field.AIM_X], character.global_position.y + PlayerInput.AIM_HEIGHT, _packet[Field.AIM_Z])
 	intent.interact_held = _packet[Field.HELD] > 0.5
+	intent.decoy_held = _packet[Field.DECOY_HELD] > 0.5
 	intent.fire = _pending_fire
 	intent.interact = _pending_interact
+	intent.decoy = _pending_decoy
 	_pending_fire = false
 	_pending_interact = false
+	_pending_decoy = false
 
 
 ## Construye el paquete a partir de las intenciones del jugador local (en el cliente).
-static func make_packet(intent: CharacterIntent, fire_seq: int, interact_seq: int) -> PackedFloat32Array:
+static func make_packet(intent: CharacterIntent, fire_seq: int, interact_seq: int, decoy_seq: int = 0) -> PackedFloat32Array:
 	var p := PackedFloat32Array()
 	p.resize(Field.SIZE)
 	p[Field.FIRE_SEQ] = fire_seq
@@ -68,4 +78,6 @@ static func make_packet(intent: CharacterIntent, fire_seq: int, interact_seq: in
 	p[Field.AIM_X] = intent.aim_point.x
 	p[Field.AIM_Z] = intent.aim_point.z
 	p[Field.HELD] = 1.0 if intent.interact_held else 0.0
+	p[Field.DECOY_SEQ] = decoy_seq
+	p[Field.DECOY_HELD] = 1.0 if intent.decoy_held else 0.0
 	return p

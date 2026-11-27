@@ -84,6 +84,14 @@ func run() -> void:
 	var moved := hunter.global_position - start
 	check(moved.x > 0.8 and absf(moved.z) < moved.x, "El Hunter se mueve a la derecha de la pantalla (%s)" % moved)
 
+	# --- Botón CAMINAR: con el joystick a tope, mantenerlo pulsado = caminar ---
+	await touch(4, tc._walk_center(), true)
+	await frames(3)
+	check(TouchControls.walk_held and hunter.intent.sneak and TouchControls.move.x > 0.95, "CAMINAR pulsado: camina aunque el joystick esté a tope")
+	await touch(4, tc._walk_center(), false)
+	await frames(3)
+	check(not TouchControls.walk_held and not hunter.intent.sneak, "Al soltar CAMINAR vuelve a correr")
+
 	# --- Joystick: poco inclinado = sigilo ---
 	await drag(0, base + Vector2(30, 0))
 	await frames(3)
