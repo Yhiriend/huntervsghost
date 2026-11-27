@@ -37,7 +37,9 @@ func stop() -> void:
 	members.clear()
 
 
-func poll() -> void:
+## Atiende la red. Con wait_ms > 0 espera hasta que llegue algo (o pase ese tiempo): así el
+## servidor reenvía cada paquete en cuanto llega, sin dormir a ciegas entre vueltas.
+func poll(wait_ms: int = 0) -> void:
 	if connection == null:
 		return
 	var now := Time.get_ticks_msec()
@@ -45,17 +47,24 @@ func poll() -> void:
 		if now >= kick[1]:
 			(kick[0] as ENetPacketPeer).peer_disconnect()
 			_pending_kicks.erase(kick)
-	while true:
-		var event := connection.service(0)
+	var wait := wait_ms
+	while connection:
+		var event := connection.service(wait)
+		wait = 0
 		var type: int = event[0]
 		if type == ENetConnection.EVENT_NONE or type == ENetConnection.EVENT_ERROR:
 			break
 		var peer: ENetPacketPeer = event[1]
 		match type:
+			ENetConnection.EVENT_CONNECT:
+				P.tune_peer(peer)
 			ENetConnection.EVENT_DISCONNECT:
 				_leave(peer)
 			ENetConnection.EVENT_RECEIVE:
 				_receive(peer, peer.get_packet(), event[3])
+	# Envía ya lo reenviado (si no, saldría en la siguiente vuelta).
+	if connection:
+		connection.flush()
 
 
 func room_count() -> int:

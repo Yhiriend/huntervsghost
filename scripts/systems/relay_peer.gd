@@ -74,6 +74,7 @@ func _poll() -> void:
 			break
 		match type:
 			ENetConnection.EVENT_CONNECT:
+				P.tune_peer(_server)
 				if _hosting:
 					_send_control(P.HOST, [P.GAME_TAG, P.VERSION, room_name])
 				else:
@@ -138,7 +139,11 @@ func _put_packet_script(buffer: PackedByteArray) -> Error:
 			channel = P.CH_ORDERED
 		MultiplayerPeer.TRANSFER_MODE_UNRELIABLE:
 			channel = P.CH_UNRELIABLE
-	return _server.send(channel, P.data(_target, buffer), P.flags_for(channel))
+	var err := _server.send(channel, P.data(_target, buffer), P.flags_for(channel))
+	# ENet solo envía lo encolado al llamar a service()/flush(): sin esto el paquete esperaría
+	# al siguiente fotograma (hasta 16-33 ms más en un móvil).
+	_connection.flush()
+	return err
 
 
 func _get_available_packet_count() -> int:
@@ -241,6 +246,7 @@ func _shutdown() -> void:
 func _send_control(type: int, args: Array) -> void:
 	if _server:
 		_server.send(P.CH_CONTROL, P.control(type, args), ENetPacketPeer.FLAG_RELIABLE)
+		_connection.flush()
 
 
 func _mode_of(channel: int) -> MultiplayerPeer.TransferMode:

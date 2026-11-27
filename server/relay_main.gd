@@ -23,5 +23,7 @@ func _initialize() -> void:
 
 func _process(_delta: float) -> bool:
 	relay.poll()
-	OS.delay_msec(2)  # Sin ventana el bucle no espera: evita usar el 100 % de la CPU.
+	# Sin ventana el bucle no espera: evita usar el 100 % de la CPU. (La espera de
+	# ENetConnection.service(ms) no duerme en Linux: gastaba ~70 % de un núcleo.)
+	OS.delay_msec(1)
 	return false

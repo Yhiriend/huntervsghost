@@ -63,6 +63,16 @@ static func data(peer: int, payload: PackedByteArray) -> PackedByteArray:
 	return out
 
 
+## Ajustes de latencia para cada conexión (en el juego y en el servidor):
+## - sin "throttle": ENet tira paquetes no fiables cuando el ping oscila (redes móviles);
+##   aquí los estados ya llegan 30 veces por segundo y son pequeños, mejor no perder ninguno.
+## - ping interno más frecuente: ENet estima antes el tiempo de ida y vuelta y reenvía antes
+##   los paquetes fiables perdidos.
+static func tune_peer(peer: ENetPacketPeer) -> void:
+	peer.throttle_configure(5000, 2, 0)
+	peer.ping_interval(250)
+
+
 static func flags_for(channel: int) -> int:
 	match channel:
 		CH_ORDERED:

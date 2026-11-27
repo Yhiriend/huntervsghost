@@ -81,6 +81,18 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
+	# Godot atiende la red una vez por fotograma de dibujo; atenderla también justo antes de
+	# cada paso de física hace que las órdenes y estados recién llegados se usen en ese paso,
+	# no en el siguiente.
+	get_tree().physics_frame.connect(_poll_network)
+	var wifi_error := LowLatencyWifi.acquire()
+	if wifi_error != "" and OS.has_feature("android"):
+		print("Wi-Fi de baja latencia: ", wifi_error)
+
+
+func _poll_network() -> void:
+	if is_active():
+		multiplayer.poll()
 
 
 func _process(delta: float) -> void:
