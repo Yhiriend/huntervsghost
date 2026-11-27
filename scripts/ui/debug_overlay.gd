@@ -41,14 +41,21 @@ func _ready() -> void:
 	_build_ui()
 
 
-## Botón "Atrás" de Android: como Esc (en el menú principal, salir).
+## Botón "Atrás" de Android: como Esc (en el inicio del menú principal, salir).
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		var current := get_tree().current_scene
+		if _page_back(current):
+			return
 		if current and current.scene_file_path != GameManager.MENU_SCENE:
 			GameManager.go_to_menu()
 		else:
 			get_tree().quit()
+
+
+## Pantallas con varios niveles (menú principal, multijugador): primero vuelven atrás dentro.
+func _page_back(scene: Node) -> bool:
+	return scene != null and scene.has_method("go_back") and scene.go_back()
 
 
 func toggle_panel() -> void:
@@ -77,6 +84,9 @@ func _input(event: InputEvent) -> void:
 				return
 	if event.is_action_pressed("back_to_menu"):
 		var current := get_tree().current_scene
+		if _page_back(current):
+			get_viewport().set_input_as_handled()
+			return
 		if current and current.scene_file_path != GameManager.MENU_SCENE:
 			GameManager.go_to_menu()
 			get_viewport().set_input_as_handled()

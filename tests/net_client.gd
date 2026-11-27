@@ -55,14 +55,26 @@ func _finish() -> void:
 
 func run() -> void:
 	Net.player_name = "Cliente"
-	Net.start_discovery()
-	var found := await wait_for(func(): return not Net.rooms.is_empty(), 3.0)
-	# La difusión en el propio ordenador depende del sistema: solo se informa.
-	print("Descubrimiento de salas en este equipo: %s" % ("sí" if found else "no"))
-	Net.stop_discovery()
-	check(Net.join_room("127.0.0.1") == OK, "Conectando con el anfitrión")
+	# --online=servidor:puerto:CODIGO -> por el servidor de salas (test_red_online).
+	var online := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--online="):
+			online = arg.trim_prefix("--online=")
+	var expected_room := "Sala de Anfitrión"
+	if online != "":
+		var parts := online.split(":")
+		Net.online_server = "%s:%s" % [parts[0], parts[1]]
+		expected_room = "Sala %s" % parts[2]
+		check(Net.join_online(parts[2]) == OK, "Conectando con el servidor de salas")
+	else:
+		Net.start_discovery()
+		var found := await wait_for(func(): return not Net.rooms.is_empty(), 3.0)
+		# La difusión en el propio ordenador depende del sistema: solo se informa.
+		print("Descubrimiento de salas en este equipo: %s" % ("sí" if found else "no"))
+		Net.stop_discovery()
+		check(Net.join_room("127.0.0.1") == OK, "Conectando con el anfitrión")
 	var joined := await wait_for(func(): return Net.is_client() and Net.players.size() >= 2, 10.0)
-	check(joined and Net.room_name == "Sala de Anfitrión", "Dentro de la sala del anfitrión (estado %d, id %d, jugadores %d, sala '%s')" % [multiplayer.multiplayer_peer.get_connection_status(), multiplayer.get_unique_id(), Net.players.size(), Net.room_name])
+	check(joined and Net.room_name == expected_room, "Dentro de la sala del anfitrión (estado %d, id %d, jugadores %d, sala '%s')" % [multiplayer.multiplayer_peer.get_connection_status(), multiplayer.get_unique_id(), Net.players.size(), Net.room_name])
 	if not joined:
 		return
 	var loaded := await wait_for(func(): return match_scene() != null, 15.0)
@@ -79,11 +91,13 @@ func run() -> void:
 	var playing := await wait_for(func(): return m.phase == MatchScenario.Phase.PLAYING, 8.0)
 	check(playing, "Las fotos del estado llevan la fase (empieza la caza)")
 	Input.action_press("move_right")
-	await wait_for(func(): return false, 1.0)
+	await wait_for(func(): return false, 1.5)
 	Input.action_release("move_right")
 
 	var netted := await wait_for(func(): return me.state == Ghost.State.NETTED, 6.0)
 	check(netted, "Me llega la red del anfitrión (estado ATRAPADO)")
+	# Los estados (fiables) pueden llegar antes que la siguiente foto de posiciones.
+	await wait_for(func(): return hunter.global_position.distance_to(me.global_position) < 3.0, 2.0)
 	check(hunter.global_position.distance_to(me.global_position) < 3.0, "La posición del Cazador llega por la red (%.1f m)" % hunter.global_position.distance_to(me.global_position))
 	var captured := await wait_for(func(): return me.state == Ghost.State.CAPTURED, 6.0)
 	check(captured and not me.visible, "Me llega la captura")

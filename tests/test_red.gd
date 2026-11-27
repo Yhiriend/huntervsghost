@@ -72,9 +72,12 @@ func run() -> void:
 	cfg.prep_time = 1.0
 	cfg.match_duration = 7.0
 	Net.player_name = "Anfitrión"
-	check(Net.host_room() == OK, "Se crea la sala")
+	var hosted: bool = await host_session()
+	check(hosted, "Se crea la sala")
 	check(Net.is_host() and Net.players.size() == 1, "Anfitrión solo en la sala")
-	var args := ["--headless", "--path", ProjectSettings.globalize_path("res://"), "res://tests/net_client.tscn"]
+	if not hosted:
+		return
+	var args := ["--headless", "--path", ProjectSettings.globalize_path("res://"), "res://tests/net_client.tscn", "--"] + client_args()
 	_client_pid = OS.create_process(OS.get_executable_path(), args)
 	check(_client_pid > 0, "Se lanza el cliente")
 	var joined := await wait_for(func(): return Net.players.size() == 2, 20.0)
@@ -105,8 +108,12 @@ func run() -> void:
 
 	await wait_for(func(): return m.phase == MatchScenario.Phase.PLAYING, 3.0)
 	var start := client_ghost.global_position
-	await frames(80)  # El cliente pulsa "derecha" durante la caza.
-	check(client_ghost.global_position.distance_to(start) > 1.0, "Los controles del cliente mueven su Presa en el anfitrión (%.1f m)" % client_ghost.global_position.distance_to(start))
+	# El cliente pulsa "derecha" 1,5 s al empezar la caza: basta con que su Presa se mueva.
+	var moved := 0.0
+	for i in 100:
+		await get_tree().physics_frame
+		moved = maxf(moved, client_ghost.global_position.distance_to(start))
+	check(moved > 0.5, "Los controles del cliente mueven su Presa en el anfitrión (%.1f m)" % moved)
 
 	# Red y captura de la Presa del cliente.
 	if client_ghost.state == Ghost.State.HIDDEN:
@@ -137,6 +144,16 @@ func run() -> void:
 	var taken := await wait_for(func(): return hunter.controller is HunterAI, 10.0)
 	check(taken and m.series.participant_name(1) == "Cliente (IA)" and not m.series.is_human(1), "El cliente se va: la IA toma su Cazador y su puesto")
 	check(Net.players.size() == 1, "La sala queda con el anfitrión")
+
+
+## Crea la sala (aquí, en red local). test_red_online lo cambia por el servidor de salas.
+func host_session() -> bool:
+	return Net.host_room() == OK
+
+
+## Argumentos para el cliente (tras "--").
+func client_args() -> Array:
+	return []
 
 
 func _kill_client() -> void:

@@ -1,10 +1,13 @@
 extends Node
-## Autoload "Net": multijugador en red local (misma WiFi).
+## Autoload "Net": multijugador en red local (misma WiFi) o por internet (servidor de salas).
 ##
 ## - Un jugador crea la sala y hace de anfitrión: ejecuta la partida completa (física, IA,
 ##   capturas) y envía el estado a los demás. Los clientes solo mandan sus controles.
 ## - Las salas se anuncian por difusión UDP (DISCOVERY_PORT) cada segundo; también se puede
 ##   entrar escribiendo la IP del anfitrión.
+## - Por internet, el anfitrión se conecta al servidor de salas del VPS (server/), que le da un
+##   código de 4 letras; los demás se unen con ese código. El servidor solo reenvía paquetes:
+##   todo lo demás funciona igual que en red local (RelayPeer en vez de ENetMultiplayerPeer).
 ## - Siempre se juega con 1 Cazador y 3 Presas: los puestos libres los ocupa la IA.
 ## - La partida (MatchSeries) la decide el anfitrión; cada ronda se carga en todos con
 ##   load_round(), y el anfitrión espera a que todos los clientes estén listos.
@@ -29,6 +32,10 @@ const ANNOUNCE_INTERVAL := 1.0
 const ROOM_TIMEOUT := 3.5
 const SETTINGS_PATH := "user://ajustes.cfg"
 const LOBBY_SCENE := "res://scenes/main/Lobby.tscn"
+## Servidor de salas por defecto ("ip" o "ip:puerto"). Pon aquí la IP de tu VPS para que el
+## APK que compartes ya lo traiga configurado; cada jugador puede cambiarlo en la sala.
+const DEFAULT_ONLINE_SERVER := "51.79.58.49"
+const RelayProtocol := preload("res://server/relay_protocol.gd")
 
 ## Nombre del jugador (se guarda en ajustes.cfg).
 var player_name: String = ""
@@ -41,6 +48,15 @@ var room_name: String = ""
 var in_game: bool = false
 ## Salas encontradas: ip -> {"name", "players", "port", "seen"}.
 var rooms: Dictionary = {}
+## Servidor de salas para jugar por internet ("ip" o "ip:puerto"; se guarda en ajustes.cfg).
+var online_server: String = ""
+## Sesión a través del servidor de salas, y su código.
+var online: bool = false
+var room_code: String = ""
+## Motivo del último fallo de conexión (texto para el jugador).
+var last_error: String = ""
+## Conexión con el servidor de salas (Godot la sustituye antes de avisar de un fallo).
+var _relay: RelayPeer
 
 ## Clientes que ya han cargado la ronda actual (solo anfitrión).
 var _ready_peers: Dictionary = {}
@@ -137,11 +153,74 @@ func join_room(address: String, port: int = PORT) -> Error:
 	return OK
 
 
+## Crea una sala en el servidor de internet. Es asíncrono: cuando el servidor da el código,
+## se emiten lobby_changed y joined (o join_failed con last_error).
+func host_online() -> Error:
+	leave()
+	var peer := RelayPeer.new()
+	var target := _online_target()
+	var err := peer.create_host(target[0], target[1]) if target[0] != "" else ERR_UNCONFIGURED
+	if err != OK:
+		last_error = peer.error_text if peer.error_text != "" else "Configura la dirección del servidor."
+		return err
+	peer.room_created.connect(_on_room_created.bind(peer))
+	multiplayer.multiplayer_peer = peer
+	online = true
+	_relay = peer
+	return OK
+
+
+## Se une a una sala de internet con su código.
+func join_online(code: String) -> Error:
+	leave()
+	var peer := RelayPeer.new()
+	var target := _online_target()
+	var err := peer.create_client(target[0], target[1], code) if target[0] != "" else ERR_UNCONFIGURED
+	if err != OK:
+		last_error = peer.error_text if peer.error_text != "" else "Configura la dirección del servidor."
+		return err
+	multiplayer.multiplayer_peer = peer
+	online = true
+	_relay = peer
+	return OK
+
+
+func set_online_server(value: String) -> void:
+	online_server = value.strip_edges()
+	_save_settings()
+
+
+## [host, puerto] del servidor de salas configurado.
+func _online_target() -> Array:
+	var text := online_server.strip_edges()
+	var port := RelayProtocol.DEFAULT_PORT
+	var colon := text.rfind(":")
+	if colon > 0 and text.count(":") == 1:
+		port = text.substr(colon + 1).to_int()
+		text = text.left(colon)
+	return [text, port]
+
+
+func _on_room_created(code: String, peer: RelayPeer) -> void:
+	if multiplayer.multiplayer_peer != peer:
+		return
+	room_code = code
+	room_name = "Sala %s" % code
+	players = {1: {"name": player_name}}
+	player_order = [1]
+	in_game = false
+	lobby_changed.emit()
+	joined.emit()
+
+
 ## Sale de la sala o partida (cierra la conexión).
 func leave() -> void:
 	if multiplayer.has_multiplayer_peer() and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
 		multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	online = false
+	room_code = ""
+	_relay = null
 	players = {}
 	player_order = []
 	in_game = false
@@ -253,7 +332,7 @@ func _on_peer_connected(peer: int) -> void:
 		_rejected.rpc_id(peer, "La partida ya ha empezado." if in_game else "La sala está llena.")
 		get_tree().create_timer(0.3).timeout.connect(func() -> void:
 			if is_host() and peer in multiplayer.get_peers():
-				(multiplayer.multiplayer_peer as ENetMultiplayerPeer).disconnect_peer(peer))
+				multiplayer.multiplayer_peer.disconnect_peer(peer))
 
 
 func _on_peer_disconnected(peer: int) -> void:
@@ -272,13 +351,27 @@ func _on_connected_to_server() -> void:
 
 
 func _on_connection_failed() -> void:
+	last_error = _peer_error("")
 	leave()
 	join_failed.emit()
 
 
 func _on_server_disconnected() -> void:
+	# Godot ya ha quitado la conexión: el papel se mira en la del servidor de salas.
+	var was_host := _relay != null and _relay.get_unique_id() == 1
+	var fallback := "Se ha perdido la conexión con el anfitrión."
+	if online:
+		fallback = "Se ha perdido la conexión con el servidor." if was_host else "La sala se ha cerrado o se ha perdido la conexión."
+	var reason := _peer_error(fallback)
 	leave()
-	session_ended.emit("Se ha perdido la conexión con el anfitrión.")
+	session_ended.emit(reason)
+
+
+## Texto de error del servidor de salas, si lo hay (y no es una desconexión genérica).
+func _peer_error(fallback: String) -> String:
+	if _relay and _relay.error_text != "" and not _relay.error_text.begins_with("Se ha perdido"):
+		return _relay.error_text
+	return fallback
 
 
 @rpc("any_peer", "reliable")
@@ -397,6 +490,9 @@ func _load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) == OK:
 		player_name = String(cfg.get_value("jugador", "nombre", ""))
+		online_server = String(cfg.get_value("red", "servidor", ""))
+	if online_server == "":
+		online_server = DEFAULT_ONLINE_SERVER
 	if player_name == "":
 		player_name = "Jugador"
 
@@ -405,6 +501,10 @@ func _save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(SETTINGS_PATH)
 	cfg.set_value("jugador", "nombre", player_name)
+	if online_server != DEFAULT_ONLINE_SERVER:
+		cfg.set_value("red", "servidor", online_server)
+	elif cfg.has_section_key("red", "servidor"):
+		cfg.erase_section_key("red", "servidor")
 	cfg.save(SETTINGS_PATH)
 
 

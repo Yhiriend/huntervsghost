@@ -210,8 +210,8 @@ func _build_net_visual() -> void:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = Color(1, 1, 1, 0.35)
 	var mesh := CapsuleMesh.new()
-	mesh.radius = 0.6
-	mesh.height = 1.9
+	mesh.radius = 0.4  # Envuelve al modelo del fantasma.
+	mesh.height = 1.8
 	mesh.radial_segments = 12
 	mesh.rings = 4
 	mesh.material = material

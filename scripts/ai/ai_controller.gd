@@ -34,7 +34,7 @@ func _ready() -> void:
 	agent.name = "NavigationAgent3D"
 	agent.path_desired_distance = 0.6
 	agent.target_desired_distance = 0.6
-	agent.radius = 0.4
+	agent.radius = 0.25  # Como la cápsula de los personajes (ajustada a los modelos).
 	agent.height = 1.6
 	agent.path_max_distance = 3.0
 	character.add_child.call_deferred(agent)
