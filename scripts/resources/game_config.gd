@@ -86,6 +86,10 @@ extends Resource
 @export var ai_hunter_patrol_sneak: bool = true
 ## La IA Presa, al esconderse, a veces elige un muro suelto en vez de un armario (0-1).
 @export_range(0.0, 1.0, 0.05) var ai_ghost_wall_chance: float = 0.5
+## La IA Presa usa el señuelo: lo deja al entrar en una habitación (con esta probabilidad) y lo
+## hace sonar, lejos de ella, cuando el Cazador anda cerca y no la ve.
+@export var ai_ghost_use_decoy: bool = true
+@export_range(0.0, 1.0, 0.05) var ai_ghost_decoy_place_chance: float = 0.35
 ## Pasos "parados" oídos en el mismo sitio en tantas ocasiones distintas = señuelo sospechoso.
 @export_range(2, 5, 1) var ai_hunter_decoy_occasions: int = 2
 ## Probabilidad de que la IA Cazador vaya a mirar un sitio que cree que es un señuelo (0-1).

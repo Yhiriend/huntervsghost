@@ -11,6 +11,8 @@ extends AIController
 ##           quieto; si el Hunter se asoma por un extremo (le ve), escapa por el otro.
 ##   ROAM    Pasea en sigilo (sin ruido) por la casa; a veces se para y a veces apaga luces.
 ##           Solo corre (y hace ruido) cuando huye.
+## Señuelo: lo deja al entrar en alguna habitación; lo hace sonar (lejos de sí) cuando percibe al
+## Hunter cerca sin que este le vea, y lo cambia de sitio cuando ya lo ha usado varias veces.
 ## Solo usa su visión y su oído: no sabe dónde está el Hunter si no lo percibe. Como el jugador
 ## Presa, ve al Hunter cuando el Hunter le ve a él.
 
@@ -31,6 +33,11 @@ const DOOR_CLOSE_DISTANCE := 1.5
 const COVER_DISTANCE := 0.5
 ## Al escapar de un muro, mantiene la ruta por el extremo libre este tiempo.
 const COVER_ESCAPE_TIME := 1.5
+## El señuelo solo sirve lejos de él y no pegado al Hunter.
+const DECOY_MIN_DISTANCE_SELF := 5.0
+const DECOY_MIN_DISTANCE_THREAT := 2.5
+## Lo cambia de sitio a partir de esta distancia (en otra habitación).
+const DECOY_MOVE_DISTANCE := 6.0
 
 var state: State = State.ROAM
 var ghost: Ghost
@@ -53,6 +60,12 @@ var _hide_decided: bool = false
 var _cover: Dictionary = {}
 var _cover_since: float = -1.0
 var _cover_duration: float = 0.0
+## Señuelo: veces que lo ha hecho sonar donde está ahora, última habitación en la que decidió si
+## dejarlo o moverlo, y tiempo que le queda manteniendo el botón (para moverlo).
+var _decoy_uses := 0
+var _decoy_known_position := Vector3.INF
+var _decoy_room: Room = null
+var _decoy_hold_left := 0.0
 
 
 func _ready() -> void:
@@ -67,6 +80,10 @@ func reset() -> void:
 	_release_cover()
 	state = State.ROAM
 	_threat_time = -100.0
+	_decoy_uses = 0
+	_decoy_known_position = Vector3.INF
+	_decoy_room = null
+	_decoy_hold_left = 0.0
 	_closed_doors.clear()
 	_last_room = null
 	_light_room = null
@@ -88,6 +105,8 @@ func think(delta: float, intent: CharacterIntent) -> void:
 	_perceive()
 	var threat_age := now - _threat_time
 	var threat_distance := flat_distance(_threat_position, character.global_position)
+
+	_update_decoy(intent, delta, threat_age)
 
 	if ghost.state == Ghost.State.HIDDEN:
 		_set_state(State.HIDDEN)
@@ -244,6 +263,57 @@ func _do_hidden(intent: CharacterIntent, threat_age: float) -> void:
 		intent.interact_with = ghost.hiding_spot
 		_release_reservation()
 		_set_state(State.ROAM)
+
+
+# --- Señuelo -----------------------------------------------------------------------
+
+## Pulsa el botón del señuelo como lo haría un jugador (intent.decoy / decoy_held).
+func _update_decoy(intent: CharacterIntent, delta: float, threat_age: float) -> void:
+	var cfg := GameManager.config
+	if not cfg.decoy_enabled or not cfg.ai_ghost_use_decoy:
+		return
+	if _decoy_hold_left > 0.0:
+		# Manteniendo el botón para moverlo aquí.
+		intent.decoy_held = true
+		_decoy_hold_left -= delta
+		return
+	if ghost.decoy_position != _decoy_known_position:
+		_decoy_known_position = ghost.decoy_position
+		_decoy_uses = 0
+	var me := character.global_position
+
+	# Hacerlo sonar: el Hunter anda cerca (percibido hace poco) pero no le está viendo.
+	if ghost.has_decoy() and ghost.decoy_cooldown_left <= 0.0 and ghost.can_use_decoy() and threat_age < 2.5 \
+			and state in [State.HIDDEN, State.COVER, State.HIDE, State.ROAM, State.IDLE] and _decoy_useful(me):
+		intent.decoy = true
+		_decoy_uses += 1
+		return
+
+	if ghost.state != Ghost.State.FREE or not (state == State.ROAM or state == State.IDLE):
+		return
+	var room := Room.find_at(character.get_tree(), me)
+	if room == null:
+		return
+	if ghost.has_decoy():
+		# El Hunter ya lo conoce (lo ha usado varias veces): lo trae aquí, lejos y en otra habitación.
+		if _decoy_uses >= cfg.ai_hunter_decoy_occasions and flat_distance(ghost.decoy_position, me) > DECOY_MOVE_DISTANCE \
+				and Room.find_at(character.get_tree(), ghost.decoy_position) != room:
+			intent.decoy = true
+			intent.decoy_held = true
+			_decoy_hold_left = cfg.decoy_move_hold + 0.1
+		return
+	# Sin señuelo: una decisión por habitación (dejarlo aquí o no).
+	if room != _decoy_room:
+		_decoy_room = room
+		if now > 4.0 and randf() < cfg.ai_ghost_decoy_place_chance:
+			intent.decoy = true
+
+
+## Lejos de él, no pegado al Hunter y a una distancia a la que el Hunter lo oiría.
+func _decoy_useful(me: Vector3) -> bool:
+	var to_threat := flat_distance(ghost.decoy_position, _threat_position)
+	return flat_distance(ghost.decoy_position, me) > DECOY_MIN_DISTANCE_SELF \
+			and to_threat > DECOY_MIN_DISTANCE_THREAT and to_threat < GameManager.config.run_noise_radius
 
 
 # --- Muros sueltos -----------------------------------------------------------------
