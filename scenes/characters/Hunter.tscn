@@ -1,17 +1,10 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/characters/hunter.gd" id="1_hunter"]
+[ext_resource type="PackedScene" path="res://assets/characters/hunter.glb" id="2_model"]
+[ext_resource type="Script" path="res://scripts/characters/character_animator.gd" id="3_animator"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
-radius = 0.4
-height = 1.6
-
-[sub_resource type="StandardMaterial3D" id="Material_body"]
-albedo_color = Color(1, 0.55, 0.15, 1)
-roughness = 0.6
-
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
-material = SubResource("Material_body")
 radius = 0.4
 height = 1.6
 
@@ -20,7 +13,7 @@ albedo_color = Color(0.45, 0.2, 0.05, 1)
 
 [sub_resource type="BoxMesh" id="BoxMesh_nose"]
 material = SubResource("Material_nose")
-size = Vector3(0.25, 0.25, 0.5)
+size = Vector3(0.11, 0.3, 0.11)
 
 [node name="Hunter" type="CharacterBody3D"]
 collision_layer = 2
@@ -32,13 +25,19 @@ display_name = "CAZADOR"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("CapsuleShape3D_body")
 
-[node name="Body" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
-mesh = SubResource("CapsuleMesh_body")
+[node name="Model" parent="." instance=ExtResource("2_model")]
 
-[node name="Launcher" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, -0.45)
+[node name="LauncherMount" type="BoneAttachment3D" parent="Model/Armature/Skeleton3D"]
+bone_name = "Hand.R"
+
+[node name="Launcher" type="MeshInstance3D" parent="Model/Armature/Skeleton3D/LauncherMount"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
 mesh = SubResource("BoxMesh_nose")
+
+[node name="Animator" type="Node" parent="."]
+script = ExtResource("3_animator")
+glow_color = Color(1, 0.6, 0.25, 1)
+glow_energy = 0.8
 
 [node name="NameLabel" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
