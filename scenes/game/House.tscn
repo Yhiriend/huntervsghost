@@ -21,9 +21,6 @@ albedo_color = Color(0.36, 0.31, 0.42, 1)
 [sub_resource type="StandardMaterial3D" id="Material_floor_dormitorio"]
 albedo_color = Color(0.33, 0.4, 0.52, 1)
 
-[sub_resource type="StandardMaterial3D" id="Material_furniture"]
-albedo_color = Color(0.42, 0.3, 0.2, 1)
-
 [node name="House" type="Node3D"]
 script = ExtResource("5_house")
 
@@ -114,56 +111,27 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.6, 3)
 size = Vector3(2, 1.2, 0.2)
 material = SubResource("Material_wall")
 
-[node name="Furniture" type="CSGCombiner3D" parent="Geometry"]
+[node name="Hideouts" type="CSGCombiner3D" parent="Geometry"]
 
-[node name="Sofa" type="CSGBox3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 0.35, -6.8)
-size = Vector3(3, 0.7, 1)
-material = SubResource("Material_furniture")
+[node name="MuroSala" type="CSGBox3D" parent="Geometry/Hideouts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.0, 0.6, -5.4)
+size = Vector3(0.2, 1.2, 2.4)
+material = SubResource("Material_wall")
 
-[node name="CoffeeTable" type="CSGCylinder3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 0.25, -4.6)
-radius = 0.7
-height = 0.5
-sides = 16
-material = SubResource("Material_furniture")
+[node name="MuroCocina" type="CSGBox3D" parent="Geometry/Hideouts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.0, 0.6, -5.2)
+size = Vector3(2.6, 1.2, 0.2)
+material = SubResource("Material_wall")
 
-[node name="Bookshelf" type="CSGBox3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0.45, -2.2)
-size = Vector3(2, 0.9, 0.8)
-material = SubResource("Material_furniture")
+[node name="MuroDormitorio" type="CSGBox3D" parent="Geometry/Hideouts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 0.6, 6.0)
+size = Vector3(2.6, 1.2, 0.2)
+material = SubResource("Material_wall")
 
-[node name="KitchenCounter" type="CSGBox3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.5, -7.4)
-size = Vector3(6, 1, 0.8)
-material = SubResource("Material_furniture")
-
-[node name="KitchenIsland" type="CSGBox3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.5, -3.8)
-size = Vector3(3, 1, 1.2)
-material = SubResource("Material_furniture")
-
-[node name="KitchenTable" type="CSGCylinder3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.4, -1.8)
-radius = 0.8
-height = 0.8
-sides = 16
-material = SubResource("Material_furniture")
-
-[node name="Bed" type="CSGBox3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 6.6)
-size = Vector3(2.4, 0.6, 3)
-material = SubResource("Material_furniture")
-
-[node name="Desk" type="CSGBox3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.4, 8.1)
-size = Vector3(2, 0.8, 1)
-material = SubResource("Material_furniture")
-
-[node name="Dresser" type="CSGBox3D" parent="Geometry/Furniture"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.45, 8.2)
-size = Vector3(2, 0.9, 0.8)
-material = SubResource("Material_furniture")
+[node name="MuroDormitorioOeste" type="CSGBox3D" parent="Geometry/Hideouts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 0.6, 5.4)
+size = Vector3(2.6, 1.2, 0.2)
+material = SubResource("Material_wall")
 
 [node name="Rooms" type="Node3D" parent="."]
 
@@ -261,6 +229,10 @@ script = ExtResource("4_hiding")
 
 [node name="WardrobeDormitorio" type="Node3D" parent="HidingSpots"]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -3, 0, 8.45)
+script = ExtResource("4_hiding")
+
+[node name="WardrobeDormitorio2" type="Node3D" parent="HidingSpots"]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 9.45, 0, 6.5)
 script = ExtResource("4_hiding")
 
 [node name="RoomLabels" type="Node3D" parent="."]

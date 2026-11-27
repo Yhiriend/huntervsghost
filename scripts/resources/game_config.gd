@@ -69,7 +69,7 @@ extends Resource
 @export_range(1, 8, 1) var decoy_steps: int = 4
 @export_range(0.1, 1.0, 0.05) var decoy_step_interval: float = 0.3
 ## Recarga entre ráfagas de pasos (s).
-@export_range(0.0, 15.0, 0.5) var decoy_cooldown: float = 3.0
+@export_range(0.0, 30.0, 0.5) var decoy_cooldown: float = 10.0
 ## Mantener el botón este tiempo mueve el señuelo a donde está la Presa.
 @export_range(0.2, 2.0, 0.05) var decoy_move_hold: float = 0.5
 

@@ -159,5 +159,5 @@ func run() -> void:
 	# ---------------- Prototype01 ----------------
 	s = await load_scenario("res://scenes/test/Prototype01.tscn")
 	check(get_tree().get_nodes_in_group("doors").size() == 5, "Prototype01: 5 puertas")
-	check(get_tree().get_nodes_in_group("hiding_spots").size() == 3, "Prototype01: 3 armarios")
+	check(get_tree().get_nodes_in_group("hiding_spots").size() == 4, "Prototype01: 4 armarios (2 en el dormitorio)")
 	check(get_tree().get_nodes_in_group("rooms").size() == 4, "Prototype01: 4 habitaciones con luz")

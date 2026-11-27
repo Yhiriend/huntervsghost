@@ -43,7 +43,7 @@ transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 0, -5.5)
 script = ExtResource("4_spawn")
 
 [node name="GhostSpawnCocina" type="Marker3D" parent="Spawns"]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 7, 0, -5.5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 7, 0, -2.5)
 script = ExtResource("4_spawn")
 
 [node name="GhostSpawnDormitorio" type="Marker3D" parent="Spawns"]
