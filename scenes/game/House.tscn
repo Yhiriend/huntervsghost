@@ -6,20 +6,110 @@
 [ext_resource type="Script" path="res://scripts/objects/hiding_spot.gd" id="4_hiding"]
 [ext_resource type="Script" path="res://scripts/objects/house.gd" id="5_house"]
 
-[sub_resource type="StandardMaterial3D" id="Material_wall"]
-albedo_color = Color(0.24, 0.27, 0.36, 1)
+[ext_resource type="Shader" path="res://shaders/floor.gdshader" id="6_floor"]
+[ext_resource type="Shader" path="res://shaders/wall.gdshader" id="7_wall"]
+[ext_resource type="Shader" path="res://shaders/grass.gdshader" id="8_grass"]
+[ext_resource type="Shader" path="res://shaders/rug.gdshader" id="9_rug"]
 
-[sub_resource type="StandardMaterial3D" id="Material_floor_sala"]
-albedo_color = Color(0.5, 0.38, 0.27, 1)
+[sub_resource type="ShaderMaterial" id="Material_wall"]
+shader = ExtResource("7_wall")
 
-[sub_resource type="StandardMaterial3D" id="Material_floor_cocina"]
-albedo_color = Color(0.52, 0.55, 0.48, 1)
+[sub_resource type="ShaderMaterial" id="Material_floor_sala"]
+shader = ExtResource("6_floor")
+shader_parameter/pattern = 0
+shader_parameter/color_a = Color(0.62, 0.43, 0.26, 1)
+shader_parameter/color_b = Color(0.46, 0.3, 0.17, 1)
+shader_parameter/room_min = Vector2(-9.9, -7.9)
+shader_parameter/room_max = Vector2(-0.1, -0.1)
 
-[sub_resource type="StandardMaterial3D" id="Material_floor_pasillo"]
-albedo_color = Color(0.36, 0.31, 0.42, 1)
+[sub_resource type="ShaderMaterial" id="Material_floor_cocina"]
+shader = ExtResource("6_floor")
+shader_parameter/pattern = 1
+shader_parameter/color_a = Color(0.82, 0.8, 0.72, 1)
+shader_parameter/color_b = Color(0.52, 0.64, 0.62, 1)
+shader_parameter/tile_size = 1.0
+shader_parameter/room_min = Vector2(0.1, -7.9)
+shader_parameter/room_max = Vector2(9.9, -0.1)
 
-[sub_resource type="StandardMaterial3D" id="Material_floor_dormitorio"]
-albedo_color = Color(0.33, 0.4, 0.52, 1)
+[sub_resource type="ShaderMaterial" id="Material_floor_pasillo"]
+shader = ExtResource("6_floor")
+shader_parameter/pattern = 0
+shader_parameter/color_a = Color(0.4, 0.27, 0.18, 1)
+shader_parameter/color_b = Color(0.3, 0.19, 0.12, 1)
+shader_parameter/plank_width = 0.25
+shader_parameter/plank_length = 1.2
+shader_parameter/room_min = Vector2(-9.9, 0.1)
+shader_parameter/room_max = Vector2(9.9, 2.9)
+
+[sub_resource type="ShaderMaterial" id="Material_floor_dormitorio"]
+shader = ExtResource("6_floor")
+shader_parameter/pattern = 2
+shader_parameter/color_a = Color(0.36, 0.42, 0.58, 1)
+shader_parameter/color_b = Color(0.28, 0.33, 0.48, 1)
+shader_parameter/room_min = Vector2(-9.9, 3.1)
+shader_parameter/room_max = Vector2(9.9, 8.9)
+
+[sub_resource type="ShaderMaterial" id="Material_grass"]
+shader = ExtResource("8_grass")
+
+[sub_resource type="PlaneMesh" id="Mesh_yard"]
+material = SubResource("Material_grass")
+size = Vector2(90, 90)
+
+[sub_resource type="StandardMaterial3D" id="Material_sidewalk"]
+albedo_color = Color(0.42, 0.4, 0.38, 1)
+roughness = 1.0
+emission_enabled = true
+emission = Color(0.1, 0.11, 0.13, 1)
+
+[sub_resource type="PlaneMesh" id="Mesh_sidewalk"]
+material = SubResource("Material_sidewalk")
+size = Vector2(22.4, 19.4)
+
+[sub_resource type="ShaderMaterial" id="Material_rug_sala"]
+shader = ExtResource("9_rug")
+shader_parameter/size = Vector2(4.2, 2.8)
+
+[sub_resource type="PlaneMesh" id="Mesh_rug_sala"]
+material = SubResource("Material_rug_sala")
+size = Vector2(4.2, 2.8)
+
+[sub_resource type="ShaderMaterial" id="Material_rug_dormitorio"]
+shader = ExtResource("9_rug")
+shader_parameter/field_color = Color(0.82, 0.78, 0.68, 1)
+shader_parameter/border_color = Color(0.3, 0.36, 0.55, 1)
+shader_parameter/pattern_color = Color(0.62, 0.66, 0.78, 1)
+shader_parameter/size = Vector2(3.4, 2.2)
+
+[sub_resource type="PlaneMesh" id="Mesh_rug_dormitorio"]
+material = SubResource("Material_rug_dormitorio")
+size = Vector2(3.4, 2.2)
+
+[sub_resource type="ShaderMaterial" id="Material_rug_pasillo"]
+shader = ExtResource("9_rug")
+shader_parameter/field_color = Color(0.2, 0.3, 0.26, 1)
+shader_parameter/border_color = Color(0.75, 0.62, 0.38, 1)
+shader_parameter/pattern_color = Color(0.14, 0.22, 0.19, 1)
+shader_parameter/size = Vector2(9.0, 1.1)
+shader_parameter/border = 0.14
+
+[sub_resource type="PlaneMesh" id="Mesh_rug_pasillo"]
+material = SubResource("Material_rug_pasillo")
+size = Vector2(9.0, 1.1)
+
+[sub_resource type="StandardMaterial3D" id="Material_window"]
+albedo_color = Color(0.55, 0.75, 0.95, 1)
+emission_enabled = true
+emission = Color(0.35, 0.55, 0.85, 1)
+emission_energy_multiplier = 0.5
+
+[sub_resource type="BoxMesh" id="Mesh_window"]
+material = SubResource("Material_window")
+size = Vector3(1.8, 0.02, 0.26)
+
+[sub_resource type="BoxMesh" id="Mesh_window_v"]
+material = SubResource("Material_window")
+size = Vector3(0.26, 0.02, 1.8)
 
 [node name="House" type="Node3D"]
 script = ExtResource("5_house")
@@ -132,6 +222,88 @@ material = SubResource("Material_wall")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 0.6, 5.4)
 size = Vector3(2.6, 1.2, 0.2)
 material = SubResource("Material_wall")
+
+[node name="Decor" type="Node3D" parent="."]
+
+[node name="Yard" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.215, 0.5)
+mesh = SubResource("Mesh_yard")
+cast_shadow = 0
+
+[node name="Sidewalk" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.205, 0.5)
+mesh = SubResource("Mesh_sidewalk")
+cast_shadow = 0
+
+[node name="RugSala" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.3, 0.005, -3.6)
+mesh = SubResource("Mesh_rug_sala")
+cast_shadow = 0
+
+[node name="RugDormitorio" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.6, 0.005, 6.2)
+mesh = SubResource("Mesh_rug_dormitorio")
+cast_shadow = 0
+
+[node name="RugPasillo" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, 1.5)
+mesh = SubResource("Mesh_rug_pasillo")
+cast_shadow = 0
+
+[node name="WindowN0" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1.21, -8)
+mesh = SubResource("Mesh_window")
+cast_shadow = 0
+
+[node name="WindowN1" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1.21, -8)
+mesh = SubResource("Mesh_window")
+cast_shadow = 0
+
+[node name="WindowN2" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.21, -8)
+mesh = SubResource("Mesh_window")
+cast_shadow = 0
+
+[node name="WindowN3" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1.21, -8)
+mesh = SubResource("Mesh_window")
+cast_shadow = 0
+
+[node name="WindowS4" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.21, 9)
+mesh = SubResource("Mesh_window")
+cast_shadow = 0
+
+[node name="WindowS5" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.21, 9)
+mesh = SubResource("Mesh_window")
+cast_shadow = 0
+
+[node name="WindowS6" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.21, 9)
+mesh = SubResource("Mesh_window")
+cast_shadow = 0
+
+[node name="WindowW7" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1.21, -4)
+mesh = SubResource("Mesh_window_v")
+cast_shadow = 0
+
+[node name="WindowW8" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1.21, 6)
+mesh = SubResource("Mesh_window_v")
+cast_shadow = 0
+
+[node name="WindowE9" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.21, -4)
+mesh = SubResource("Mesh_window_v")
+cast_shadow = 0
+
+[node name="WindowE10" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.21, 6)
+mesh = SubResource("Mesh_window_v")
+cast_shadow = 0
 
 [node name="Rooms" type="Node3D" parent="."]
 

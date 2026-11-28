@@ -109,6 +109,7 @@ static func clear_state() -> void:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_scenario_bar = HBoxContainer.new()
 	_scenario_bar.anchor_left = 1.0
 	_scenario_bar.anchor_right = 1.0
@@ -322,15 +323,17 @@ func _draw() -> void:
 		draw_arc(decoy_center, decoy_r, 0.0, TAU, 40, COLOR_RING, 3.0 * s, true)
 		if not decoy_is_ready:
 			draw_arc(decoy_center, decoy_r + 6.0 * s, -PI / 2.0, -PI / 2.0 + TAU * decoy_ready, 40, COLOR_PROGRESS, 5.0 * s, true)
-		_draw_text(font, decoy_center + Vector2(0, 2.0 * s), "SEÑUELO", 13, s)
-		_draw_text(font, decoy_center + Vector2(0, 20.0 * s), "pasos · mantén: mover" if decoy_placed else "dejar aquí", 10, s)
+		_draw_icon(Icons.get_icon("senuelo"), decoy_center + Vector2(0, -8.0 * s), 40.0 * s, Color(1, 1, 1, 1.0 if decoy_is_ready else 0.5))
+		_draw_text(font, decoy_center + Vector2(0, 30.0 * s), "SEÑUELO", 11, s)
+		_draw_text(font, decoy_center + Vector2(0, decoy_r + 18.0 * s), "pasos · mantén: mover" if decoy_placed else "dejar aquí", 10, s, COLOR_TEXT_OFF)
 
 	# Botón CAMINAR
 	var walk_center := _walk_center()
 	var walk_r := WALK_RADIUS * s
 	draw_circle(walk_center, walk_r, COLOR_SNEAK if walk_held else COLOR_BASE)
 	draw_arc(walk_center, walk_r, 0.0, TAU, 40, COLOR_SNEAK if walk_held else COLOR_RING, 3.0 * s, true)
-	_draw_text(font, walk_center + Vector2(0, 5.0 * s), "CAMINAR", 13, s)
+	_draw_icon(Icons.get_icon("caminar"), walk_center + Vector2(0, -7.0 * s), 34.0 * s)
+	_draw_text(font, walk_center + Vector2(0, 27.0 * s), "CAMINAR", 10, s)
 
 	# Botón RED
 	if show_fire:
@@ -341,7 +344,8 @@ func _draw() -> void:
 		draw_arc(center, r, 0.0, TAU, 48, COLOR_RING, 3.0 * s, true)
 		if not net_ready:
 			draw_arc(center, r + 6.0 * s, -PI / 2.0, -PI / 2.0 + TAU * fire_ready, 48, COLOR_PROGRESS, 5.0 * s, true)
-		_draw_text(font, center + Vector2(0, 8.0 * s), "RED", 26, s)
+		_draw_icon(Icons.get_icon("red"), center + Vector2(0, -10.0 * s), 62.0 * s, Color(1, 1, 1, 1.0 if net_ready else 0.5))
+		_draw_text(font, center + Vector2(0, 42.0 * s), "RED", 16, s)
 
 	# Botón de acción: siempre visible; gris y sin efecto si no hay nada que hacer.
 	var center := _action_center()
@@ -349,16 +353,26 @@ func _draw() -> void:
 	if action_text == "":
 		draw_circle(center, r, COLOR_ACTION_OFF)
 		draw_arc(center, r, 0.0, TAU, 48, Color(1, 1, 1, 0.2), 3.0 * s, true)
-		_draw_text(font, center + Vector2(0, 6.0 * s), ACTION_IDLE_TEXT, 16, s, COLOR_TEXT_OFF)
+		_draw_icon(Icons.for_action(""), center + Vector2(0, -8.0 * s), 40.0 * s, COLOR_TEXT_OFF)
+		_draw_text(font, center + Vector2(0, 34.0 * s), ACTION_IDLE_TEXT, 12, s, COLOR_TEXT_OFF)
 	else:
 		draw_circle(center, r, COLOR_PRESSED if _action_index >= 0 else COLOR_ACTION)
 		draw_arc(center, r, 0.0, TAU, 48, COLOR_RING, 3.0 * s, true)
 		if action_progress >= 0.0:
 			draw_arc(center, r + 6.0 * s, -PI / 2.0, -PI / 2.0 + TAU * clampf(action_progress, 0.0, 1.0), 48, COLOR_PROGRESS, 5.0 * s, true)
-		var font_size := 18 if action_text.length() <= 8 else 14
-		_draw_text(font, center + Vector2(0, 6.0 * s), action_text, font_size, s)
+		_draw_icon(Icons.for_action(action_text), center + Vector2(0, -9.0 * s), 44.0 * s)
+		_draw_text(font, center + Vector2(0, 34.0 * s), action_text, 13 if action_text.length() <= 8 else 11, s)
 		if action_hold:
-			_draw_text(font, center + Vector2(0, 26.0 * s), "mantén", 12, s)
+			_draw_text(font, center + Vector2(0, r + 20.0 * s), "mantén", 12, s)
+
+
+## Icono centrado en pos, con una sombra para que se lea sobre cualquier fondo.
+func _draw_icon(icon: Texture2D, pos: Vector2, icon_size: float, color: Color = Color.WHITE) -> void:
+	if icon == null:
+		return
+	var rect := Rect2(pos - Vector2.ONE * icon_size * 0.5, Vector2.ONE * icon_size)
+	draw_texture_rect(icon, Rect2(rect.position + Vector2(1.5, 2.0), rect.size), false, Color(0, 0, 0, 0.45 * color.a))
+	draw_texture_rect(icon, rect, false, color)
 
 
 func _draw_text(font: Font, pos: Vector2, text: String, font_size: int, s: float, color: Color = Color.WHITE) -> void:
@@ -383,4 +397,5 @@ func _make_action_button(text: String, action: String) -> Button:
 			ev.action = action
 			ev.pressed = pressed
 			Input.parse_input_event(ev))
+	Icons.apply(button)
 	return button

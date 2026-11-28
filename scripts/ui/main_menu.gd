@@ -149,6 +149,7 @@ func _button(text: String, callback: Callable, color: Color = Color.WHITE) -> Bu
 	button.add_theme_font_size_override("font_size", 20)
 	button.add_theme_color_override("font_color", color)
 	button.pressed.connect(callback)
+	Icons.apply(button, color)
 	return button
 
 

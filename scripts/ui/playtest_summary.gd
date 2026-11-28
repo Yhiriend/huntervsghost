@@ -48,6 +48,7 @@ func _ready() -> void:
 	back.text = "Volver al menú (Esc)"
 	back.custom_minimum_size = Vector2(220, 44)
 	back.pressed.connect(GameManager.go_to_menu)
+	Icons.apply(back)
 	buttons.add_child(back)
 	var folder := Button.new()
 	folder.text = "Abrir carpeta (playtests.csv)"

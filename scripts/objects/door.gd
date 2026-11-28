@@ -106,6 +106,16 @@ func _build_panel() -> void:
 	var visual := MeshInstance3D.new()
 	visual.mesh = mesh
 	_panel.add_child(visual)
+	# Canto superior más oscuro: desde arriba se distingue la hoja de la pared.
+	var top_material := StandardMaterial3D.new()
+	top_material.albedo_color = DOOR_COLOR.darkened(0.35)
+	var top_mesh := BoxMesh.new()
+	top_mesh.size = Vector3(shape.size.x, 0.02, THICKNESS + 0.02)
+	top_mesh.material = top_material
+	var top := MeshInstance3D.new()
+	top.mesh = top_mesh
+	top.position.y = HEIGHT * 0.5
+	_panel.add_child(top)
 
 	# Tirador blanco para reconocerla como objeto interactivo.
 	var handle_material := StandardMaterial3D.new()

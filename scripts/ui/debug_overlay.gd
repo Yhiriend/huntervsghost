@@ -277,6 +277,7 @@ func _make_button(text: String, callback: Callable) -> Button:
 	button.text = text
 	button.focus_mode = Control.FOCUS_NONE
 	button.pressed.connect(callback)
+	Icons.apply(button)
 	return button
 
 

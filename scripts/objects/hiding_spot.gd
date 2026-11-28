@@ -9,7 +9,9 @@ extends Interactable
 signal searched(spot: HidingSpot, found: Ghost)
 
 const SIZE := Vector3(1.4, 1.6, 0.9)
-const COLOR := Color(0.45, 0.25, 0.65)
+## Madera con un toque morado: se reconoce como escondite.
+const COLOR := Color(0.42, 0.26, 0.42)
+const TOP_COLOR := Color(0.56, 0.38, 0.52)
 
 var occupant: Ghost = null
 
@@ -108,15 +110,12 @@ func _build() -> void:
 	_visual.name = "Visual"
 	add_child(_visual)
 
-	var material := StandardMaterial3D.new()
-	material.albedo_color = COLOR
-	var mesh := BoxMesh.new()
-	mesh.size = SIZE
-	mesh.material = material
-	var cabinet := MeshInstance3D.new()
-	cabinet.mesh = mesh
-	cabinet.position = Vector3(0.0, SIZE.y * 0.5, 0.0)
+	# Mueble de madera visto desde arriba: cuerpo, tapa con moldura y la junta de las dos puertas.
+	var cabinet := _box(SIZE, Vector3(0.0, SIZE.y * 0.5, 0.0), COLOR)
 	_visual.add_child(cabinet)
+	_visual.add_child(_box(Vector3(SIZE.x - 0.16, 0.03, SIZE.z - 0.16), Vector3(0.0, SIZE.y + 0.015, 0.0), TOP_COLOR))
+	_visual.add_child(_box(Vector3(0.03, SIZE.y - 0.12, 0.02), Vector3(0.0, SIZE.y * 0.5, SIZE.z * 0.5 + 0.01), COLOR.darkened(0.5)))
+	_visual.add_child(_box(Vector3(SIZE.x + 0.06, 0.06, SIZE.z + 0.06), Vector3(0.0, SIZE.y - 0.03, 0.0), COLOR.darkened(0.25)))
 
 	# Tiradores blancos en el frente.
 	var handle_material := StandardMaterial3D.new()
@@ -132,3 +131,16 @@ func _build() -> void:
 		handle.mesh = handle_mesh
 		handle.position = Vector3(x, SIZE.y * 0.6, SIZE.z * 0.5 + 0.03)
 		_visual.add_child(handle)
+
+
+func _box(box_size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.7
+	var mesh := BoxMesh.new()
+	mesh.size = box_size
+	mesh.material = material
+	var instance := MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.position = at
+	return instance

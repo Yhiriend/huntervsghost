@@ -70,6 +70,7 @@ func set_choices(choices: Array) -> void:
 		button.focus_mode = Control.FOCUS_NONE
 		var id: String = entry[1]
 		button.pressed.connect(func() -> void: choice.emit(id))
+		Icons.apply(button)
 		_buttons.add_child(button)
 
 

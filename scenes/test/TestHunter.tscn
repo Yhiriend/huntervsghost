@@ -4,13 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/game/House.tscn" id="2_house"]
 [ext_resource type="Script" path="res://scripts/camera/camera_rig.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/test/dummy_spawn.gd" id="4_spawn"]
-
-[sub_resource type="Environment" id="Environment_house"]
-background_mode = 1
-background_color = Color(0.03, 0.04, 0.08, 1)
-ambient_light_source = 2
-ambient_light_color = Color(0.35, 0.4, 0.7, 1)
-ambient_light_energy = 0.55
+[ext_resource type="Environment" path="res://scenes/game/house_environment.tres" id="env_house"]
 
 [sub_resource type="Curve3D" id="Curve3D_pasillo"]
 _data = {
@@ -26,7 +20,7 @@ rooms_dark = PackedStringArray("Dormitorio")
 doors_closed = PackedStringArray("DoorCocinaPasillo")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_house")
+environment = ExtResource("env_house")
 
 [node name="House" parent="." instance=ExtResource("2_house")]
 

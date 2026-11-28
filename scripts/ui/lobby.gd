@@ -208,7 +208,9 @@ func _refresh_rooms() -> void:
 		var info: Dictionary = Net.rooms[ip]
 		var text := "%s   (%d/%d)   %s" % [info["name"], info["players"], Net.MAX_PLAYERS, ip]
 		var port: int = info["port"]
-		_rooms_box.add_child(_button(text, func() -> void: _join(ip, port), Color(0.45, 0.85, 1.0)))
+		var room_button := _button(text, func() -> void: _join(ip, port), Color(0.45, 0.85, 1.0))
+		Icons.apply(room_button, Color(0.45, 0.85, 1.0), Icons.get_icon("unirse"))
+		_rooms_box.add_child(room_button)
 
 
 ## Salas de internet que admiten jugadores (se actualiza sola mientras se mira).
@@ -233,7 +235,9 @@ func _refresh_online_rooms() -> void:
 			break
 		var code: String = room["code"]
 		var text := "%s   (%d/%d)" % [room["name"], room["players"], Net.MAX_PLAYERS]
-		_online_rooms_box.add_child(_button(text, func() -> void: _join_online(code), TITLE_COLOR))
+		var room_button := _button(text, func() -> void: _join_online(code), TITLE_COLOR)
+		Icons.apply(room_button, TITLE_COLOR, Icons.get_icon("unirse"))
+		_online_rooms_box.add_child(room_button)
 		shown += 1
 
 
@@ -394,6 +398,7 @@ func _button(text: String, callback: Callable, color: Color = Color.WHITE) -> Bu
 	button.add_theme_font_size_override("font_size", 18)
 	button.add_theme_color_override("font_color", color)
 	button.pressed.connect(callback)
+	Icons.apply(button, color)
 	return button
 
 
