@@ -46,6 +46,10 @@ func _run() -> void:
 	s.queue_free()
 	GameManager.config.camera_zoom = GameManager.config.camera_zoom_touch
 	await _frames(2)
-	add_child(load("res://scenes/main/MainMenu.tscn").instantiate())
-	await _frames(20)
+	var menu: Node = load("res://scenes/main/MainMenu.tscn").instantiate()
+	add_child(menu)
+	await _frames(120)
+	var bg := menu.find_children("*", "MenuBackground", true, false)
+	if not bg.is_empty():
+		print("fondo: tamaño ", bg[0].size, " viewport ", bg[0].get_child(0).size)
 	await _shot("menu.png")

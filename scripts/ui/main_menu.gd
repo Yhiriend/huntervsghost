@@ -9,9 +9,11 @@ const TEST_SCENES := [
 	["TestCazador · 5 Presas maniquí", "res://scenes/test/TestHunter.tscn"],
 	["TestPresa · Cazadores que patrullan", "res://scenes/test/TestGhost.tscn"],
 	["TestAI · IA contra IA (espectador)", "res://scenes/test/TestAI.tscn"],
+	["Prueba de rendimiento (1 min)", "res://scenes/test/Rendimiento.tscn"],
 ]
 const TITLE_COLOR := Color(0.45, 0.85, 1.0)
 const MUTED := Color(0.7, 0.7, 0.8)
+const VEIL_SHADER := preload("res://shaders/menu_veil.gdshader")
 
 var _notice: Label
 ## nombre -> VBoxContainer; y a qué pantalla vuelve cada una.
@@ -21,20 +23,44 @@ var _current := "inicio"
 
 
 func _ready() -> void:
+	# Fondo: la casa de noche, animada, bajo un velo oscuro.
 	var background := ColorRect.new()
-	background.color = Color(0.04, 0.05, 0.1)
+	background.color = Color(0.02, 0.03, 0.06)
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(background)
+	add_child(MenuBackground.new())
+	var veil := ColorRect.new()
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	veil.material = ShaderMaterial.new()
+	(veil.material as ShaderMaterial).shader = VEIL_SHADER
+	add_child(veil)
 
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 4)
+	center.add_child(column)
+	column.add_child(_title())
+	column.add_child(_label("Escóndete · Busca · Atrapa", 17, Color(0.85, 0.85, 0.95, 0.8)))
+	column.add_child(_spacer(10))
+	# Panel translúcido detrás de los botones.
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.03, 0.04, 0.09, 0.72)
+	style.border_color = Color(TITLE_COLOR, 0.35)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(14)
+	style.set_content_margin_all(18)
+	style.shadow_color = Color(0, 0, 0, 0.5)
+	style.shadow_size = 12
+	panel.add_theme_stylebox_override("panel", style)
+	column.add_child(panel)
 	var page := VBoxContainer.new()
 	page.custom_minimum_size = Vector2(460, 0)
 	page.add_theme_constant_override("separation", 6)
-	center.add_child(page)
-	page.add_child(_label("¿CAZADOR O PRESA?", 48, TITLE_COLOR))
-	page.add_child(_spacer(12))
+	panel.add_child(page)
 
 	# Inicio
 	var home := _page("inicio", "")
@@ -151,6 +177,18 @@ func _button(text: String, callback: Callable, color: Color = Color.WHITE) -> Bu
 	button.pressed.connect(callback)
 	Icons.apply(button, color)
 	return button
+
+
+## Título grande con contorno y sombra (se lee sobre el fondo animado).
+func _title() -> Label:
+	var title := _label("¿CAZADOR O PRESA?", 54, TITLE_COLOR)
+	title.add_theme_color_override("font_outline_color", Color(0.02, 0.05, 0.12))
+	title.add_theme_constant_override("outline_size", 14)
+	title.add_theme_color_override("font_shadow_color", Color(1.0, 0.6, 0.25, 0.55))
+	title.add_theme_constant_override("shadow_offset_x", 0)
+	title.add_theme_constant_override("shadow_offset_y", 4)
+	title.add_theme_constant_override("shadow_outline_size", 18)
+	return title
 
 
 func _label(text: String, font_size: int, color: Color) -> Label:

@@ -48,6 +48,8 @@ const DIFFICULTY_PRESETS := {
 		"ai_ghost_light_chance": 0.8,
 	},
 }
+## Entorno compartido de la casa (partida, pruebas y fondo del menú).
+var house_environment: Environment = preload("res://scenes/game/house_environment.tres")
 ## Dificultad de la IA rival (afecta a la IA del bando contrario al jugador).
 var difficulty: int = Difficulty.NORMAL
 
@@ -61,6 +63,18 @@ var debug_vision: bool = true:
 func _ready() -> void:
 	if is_mobile():
 		config.camera_zoom = config.camera_zoom_touch
+	apply_graphics()
+
+
+## Aplica los ajustes de rendimiento (al arrancar y al cambiarlos en el panel de ajustes).
+func apply_graphics() -> void:
+	if is_mobile():
+		Engine.max_fps = config.max_fps_mobile
+		var root := get_tree().root
+		root.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+		root.scaling_3d_scale = config.render_scale_mobile
+	house_environment.glow_enabled = not config.graphics_low
+	get_tree().call_group("graphics_quality", "apply_graphics_quality", config.graphics_low)
 
 
 ## Se ejecuta en un teléfono o tablet.

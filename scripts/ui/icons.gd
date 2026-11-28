@@ -19,6 +19,7 @@ const BY_TEXT := [
 	["resultados", "resultados"],
 	["escenarios", "pruebas"],
 	["prototype", "pruebas"],
+	["rendimiento", "resultados"],
 	["test", "pruebas"],
 	["internet", "internet"],
 	["wifi", "wifi"],

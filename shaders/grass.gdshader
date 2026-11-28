@@ -1,10 +1,13 @@
 shader_type spatial;
 // Jardín alrededor de la casa (solo se ve, no tiene colisión): césped con franjas de corte.
+// Ocupa mucha pantalla: se mantiene barato (dos capas de ruido) y no se dibuja bajo la casa.
 
 uniform vec3 color_a : source_color = vec3(0.2, 0.34, 0.17);
 uniform vec3 color_b : source_color = vec3(0.13, 0.24, 0.12);
 // Luz de luna: fuera no hay lámparas, sin esto el jardín se vería negro.
 uniform float moonlight = 0.35;
+// Gráficos bajos: color plano, sin ruido.
+uniform bool simple = false;
 
 varying vec3 world_pos;
 
@@ -26,10 +29,17 @@ void vertex() {
 
 void fragment() {
 	vec2 p = world_pos.xz;
-	float n = noise(p * 1.3) * 0.5 + noise(p * 6.0) * 0.3 + noise(p * 25.0) * 0.2;
+	if (simple) {
+		vec3 flat_col = mix(color_a, color_b, 0.5);
+		ALBEDO = flat_col;
+		EMISSION = flat_col * vec3(0.6, 0.75, 1.0) * moonlight;
+		ROUGHNESS = 1.0;
+	} else {
+	float n = noise(p * 1.3) * 0.6 + noise(p * 6.0) * 0.4;
 	float stripe = step(0.5, fract(p.x / 3.0)) * 0.12;
 	vec3 col = mix(color_a, color_b, clamp(n + stripe, 0.0, 1.0));
 	ALBEDO = col;
 	EMISSION = col * vec3(0.6, 0.75, 1.0) * moonlight;
 	ROUGHNESS = 1.0;
+	}
 }

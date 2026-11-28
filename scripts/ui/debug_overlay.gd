@@ -292,10 +292,12 @@ func _style_label(label: Label) -> void:
 func _on_slider_changed(value: float, prop_name: String, prop_type: int) -> void:
 	GameManager.config.set(prop_name, int(value) if prop_type == TYPE_INT else value)
 	_update_row_label(prop_name)
+	GameManager.apply_graphics()
 
 
 func _on_check_toggled(pressed: bool, prop_name: String) -> void:
 	GameManager.config.set(prop_name, pressed)
+	GameManager.apply_graphics()
 
 
 func _update_row_label(prop_name: String) -> void:

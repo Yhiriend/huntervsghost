@@ -16,10 +16,20 @@ var _region: NavigationRegion3D
 
 func _ready() -> void:
 	add_to_group("house")
+	add_to_group("graphics_quality")
+	apply_graphics_quality(GameManager.config.graphics_low)
 	_region = NavigationRegion3D.new()
 	_region.name = "Navigation"
 	add_child(_region)
 	_bake()
+
+
+## Gráficos bajos: césped de color plano (el jardín ocupa mucha pantalla).
+func apply_graphics_quality(low: bool) -> void:
+	var yard := get_node_or_null("Decor/YardN") as MeshInstance3D
+	if yard and yard.mesh and yard.mesh.material is ShaderMaterial:
+		# Todas las piezas del jardín comparten el material.
+		(yard.mesh.material as ShaderMaterial).set_shader_parameter("simple", low)
 
 
 func _make_navigation_mesh() -> NavigationMesh:

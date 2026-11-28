@@ -52,9 +52,6 @@ shader_parameter/room_max = Vector2(9.9, 8.9)
 [sub_resource type="ShaderMaterial" id="Material_grass"]
 shader = ExtResource("8_grass")
 
-[sub_resource type="PlaneMesh" id="Mesh_yard"]
-material = SubResource("Material_grass")
-size = Vector2(90, 90)
 
 [sub_resource type="StandardMaterial3D" id="Material_sidewalk"]
 albedo_color = Color(0.42, 0.4, 0.38, 1)
@@ -62,9 +59,38 @@ roughness = 1.0
 emission_enabled = true
 emission = Color(0.1, 0.11, 0.13, 1)
 
-[sub_resource type="PlaneMesh" id="Mesh_sidewalk"]
+
+[sub_resource type="PlaneMesh" id="Mesh_YardN"]
+material = SubResource("Material_grass")
+size = Vector2(90, 35.8)
+
+[sub_resource type="PlaneMesh" id="Mesh_YardS"]
+material = SubResource("Material_grass")
+size = Vector2(90, 34.8)
+
+[sub_resource type="PlaneMesh" id="Mesh_YardW"]
+material = SubResource("Material_grass")
+size = Vector2(33.8, 19.4)
+
+[sub_resource type="PlaneMesh" id="Mesh_YardE"]
+material = SubResource("Material_grass")
+size = Vector2(33.8, 19.4)
+
+[sub_resource type="PlaneMesh" id="Mesh_SidewalkN"]
 material = SubResource("Material_sidewalk")
-size = Vector2(22.4, 19.4)
+size = Vector2(22.4, 1.1)
+
+[sub_resource type="PlaneMesh" id="Mesh_SidewalkS"]
+material = SubResource("Material_sidewalk")
+size = Vector2(22.4, 1.1)
+
+[sub_resource type="PlaneMesh" id="Mesh_SidewalkW"]
+material = SubResource("Material_sidewalk")
+size = Vector2(1.1, 17.2)
+
+[sub_resource type="PlaneMesh" id="Mesh_SidewalkE"]
+material = SubResource("Material_sidewalk")
+size = Vector2(1.1, 17.2)
 
 [sub_resource type="ShaderMaterial" id="Material_rug_sala"]
 shader = ExtResource("9_rug")
@@ -225,16 +251,45 @@ material = SubResource("Material_wall")
 
 [node name="Decor" type="Node3D" parent="."]
 
-[node name="Yard" type="MeshInstance3D" parent="Decor"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.215, 0.5)
-mesh = SubResource("Mesh_yard")
+[node name="YardN" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.215, -27.1)
+mesh = SubResource("Mesh_YardN")
 cast_shadow = 0
 
-[node name="Sidewalk" type="MeshInstance3D" parent="Decor"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.205, 0.5)
-mesh = SubResource("Mesh_sidewalk")
+[node name="YardS" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.215, 27.6)
+mesh = SubResource("Mesh_YardS")
 cast_shadow = 0
 
+[node name="YardW" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28.1, -0.215, 0.5)
+mesh = SubResource("Mesh_YardW")
+cast_shadow = 0
+
+[node name="YardE" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.1, -0.215, 0.5)
+mesh = SubResource("Mesh_YardE")
+cast_shadow = 0
+
+[node name="SidewalkN" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.205, -8.65)
+mesh = SubResource("Mesh_SidewalkN")
+cast_shadow = 0
+
+[node name="SidewalkS" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.205, 9.65)
+mesh = SubResource("Mesh_SidewalkS")
+cast_shadow = 0
+
+[node name="SidewalkW" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.65, -0.205, 0.5)
+mesh = SubResource("Mesh_SidewalkW")
+cast_shadow = 0
+
+[node name="SidewalkE" type="MeshInstance3D" parent="Decor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.65, -0.205, 0.5)
+mesh = SubResource("Mesh_SidewalkE")
+cast_shadow = 0
 [node name="RugSala" type="MeshInstance3D" parent="Decor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.3, 0.005, -3.6)
 mesh = SubResource("Mesh_rug_sala")

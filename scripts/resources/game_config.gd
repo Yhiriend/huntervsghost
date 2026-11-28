@@ -135,6 +135,14 @@ extends Resource
 ## Jugando como Presa: late el corazón cuando el Cazador está en tu habitación (más rápido cuanto más cerca).
 @export var prey_pulse_enabled: bool = true
 
+@export_group("Rendimiento")
+## FPS máximos en el móvil. Sin límite, una pantalla de 120 Hz dibuja el doble (calor y batería).
+@export_range(30, 120, 30) var max_fps_mobile: int = 60
+## Resolución del 3D en el móvil (1 = nativa). La interfaz se dibuja siempre a resolución completa.
+@export_range(0.5, 1.0, 0.05) var render_scale_mobile: float = 0.8
+## Gráficos bajos: sin brillo (glow), césped plano y linterna del menú sin sombra.
+@export var graphics_low: bool = false
+
 @export_group("Móvil")
 ## Muestra los controles táctiles también en PC (se manejan con el ratón, para probarlos sin móvil).
 @export var touch_controls_on_pc: bool = false
